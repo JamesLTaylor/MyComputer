@@ -1,4 +1,4 @@
-from connection import translate_to_bin
+from connection import translate_to_machine_instruction
 
 
 def get_add_numbers_prog():
@@ -15,5 +15,5 @@ NOP
 10000
 12   15
 '''
-    listing = [translate_to_bin(line) for line in code.splitlines()]
+    listing = [translate_to_machine_instruction(line) for line in code.splitlines()]
     return listing

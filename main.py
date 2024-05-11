@@ -1,4 +1,4 @@
-from connection import translate_to_bin, MyComputerInterface, ExpectedMachineState, bin_to_value
+from connection import translate_to_machine_instruction, MyComputerInterface, ExpectedMachineState, bin_to_value
 from PyQt5.QtWidgets import QApplication, QWidget, QTabWidget, QGridLayout, QLabel, QPlainTextEdit, QFrame, QScrollArea
 from PyQt5.QtCore import Qt, QSize
 import traceback
@@ -20,7 +20,7 @@ class MainWindow(QWidget):
         self.interface = interface
         self.setWindowTitle('MyComputer')
         self.width = 400
-        self.height = 600
+        self.height = 800
         self.setMinimumSize(self.width, self.height)
 
         layout = QVBoxLayout()
@@ -72,11 +72,11 @@ class TestTab(QWidget):
             rows.append(f'{i*2:<5} {m:<20}  {rm}')
         self.mem = QPlainTextEdit('\n'.join(rows), readOnly=True)
         self.mem.setMinimumSize(QSize(600, 600))
-        scrollArea = QScrollArea()
+        # scrollArea = QScrollArea()
         # scrollArea.setBackgroundRole(QPalette.Dark)
-        scrollArea.setWidget(self.mem)
-        # layout.addWidget(self.mem)
-        self.layout.addWidget(scrollArea)
+        # scrollArea.setWidget(self.mem)
+        # self.layout.addWidget(scrollArea)
+        self.layout.addWidget(self.mem)
 
         # # Control
         # sep = QFrame()
@@ -143,12 +143,21 @@ class TestTab(QWidget):
         self.tgt = QLineEdit('00000000', readOnly=True)
         self.tgt.setFixedWidth(160)
         row_src_tgt.addWidget(self.tgt)
+
+        row_src_tgt.addWidget(QLabel('carry'))
+        self.carry = QLineEdit('0', readOnly=True)
+        self.carry.setFixedWidth(30)
+        row_src_tgt.addWidget(self.carry)
+        row_src_tgt.addWidget(QLabel('cmp'))
+        self.cmp = QLineEdit('0', readOnly=True)
+        self.cmp.setFixedWidth(30)
+        row_src_tgt.addWidget(self.cmp)
+        row_src_tgt.addWidget(QLabel('write'))
+        self.write = QLineEdit('0', readOnly=True)
+        self.write.setFixedWidth(30)
+        row_src_tgt.addWidget(self.write)
         row_src_tgt.addStretch()
         self.layout.addLayout(row_src_tgt)
-
-        self.state.carry
-        self.state.cmp
-        self.state.write
 
         self.rows = {}
         self.writes_to_reg_bus = ['P1', 'M1', 'W', 'A', 'R']
@@ -179,6 +188,11 @@ class TestTab(QWidget):
         self.layout.addLayout(row_n)
 
     def update_data(self):
+        rows = []
+        for i, (m, rm) in enumerate(zip(self.computer.memory, self.computer.readable_memory)):
+            rows.append(f'{i * 2:<5} {m:<20}  {rm}')
+        self.mem.setPlainText('\n'.join(rows))
+
         # bus from device and clock
         self.bus_from_device.setText(txt(self.state.bus_from_device))
         self.clock.setText(txt(self.state.clock))
@@ -186,9 +200,13 @@ class TestTab(QWidget):
         # register busses
         self.bus_to_regs.setText(txt(self.state.bus_to_registers()))
         self.bus_from_regs.setText(txt(self.state.bus_from_registers()))
-        #
+        # SRC/TGT row
         self.src.setText(txt(self.state.src()))
         self.tgt.setText(txt(self.state.tgt()))
+
+        self.carry.setText(txt(self.state.carry))
+        self.cmp.setText(txt(self.state.cmp))
+        self.write.setText(txt(self.state.write()))
 
         for name, (click, value, disable) in self.rows.items():
             click.setText(txt(self.state.clicks()[name]))
@@ -213,10 +231,13 @@ class TestTab(QWidget):
             print(traceback.format_exc())
 
     def auto_clicked(self):
+        """ Run until NOP encountered
+
+        """
         try:
             count = 0
             while count < 100:
-                count +=1
+                count += 1
                 interface.read_write_cycle()  # read instruction
                 if self.state.bus_from_device == [0, 0, 0, 0, 0, 0, 0, 0]:
                     return
@@ -292,20 +313,25 @@ def test_run():
 if __name__ == '__main__':
 
     # 7x11
-    program711 = ['RDV M1 40',  # Initialize
+    program711 = ['RDV A 40',
+                  'CPY A M1',
+                  'RDV A 25',
+                  'WRT A',
+                  'RDM R',
+                  'RDV M1 40',  # Initialize
                   'RDV A 11',
-                  'CPY A *M',
+                  'WRT A',
                   'RDV M1 42',
                   'RDV A 7',
-                  'CPY A *M',
+                  'WRT A',
                   'RDV M1 40',   #addr 12 / start of loop / adds 11 to m20
-                  'CPY *M A',
+                  'RDM A',
                   'ADV A 11',
-                  'CPY A *M',
+                  'WRT A',
                   'RDV M1 42',  # Subtract 1 from m22
-                  'CPY *M A',
+                  'RDM A',
                   'ADV A -1',
-                  'CPY A *M',
+                  'WRT A',
                   'JMZ A 32',  # if m22 is zero then exit loop
                   'RDV P1 12',  # location 30
                   'NOP'        # end of program
