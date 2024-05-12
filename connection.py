@@ -57,9 +57,9 @@ def translate_to_readable(val1, val2):
     """ Returns list of Instruction, value pair, single value
     """
     instruction = instructions_inv.get(val1 % 32, '??')
-    buffer = registers_inv.get(val1 // 32, '??')
+    register = registers_inv.get(val1 // 32, '??')
     value = val2
-    return [f'{instruction:<5}{buffer:<4}{value:<3}', (val1, val2), {val1 + val2 * 256}]
+    return [f'{instruction:<5}{register:<4}{value:<3}', (val1, val2), {val1 + val2 * 256}]
 
 
 def translate_to_machine_instruction(line):
@@ -90,11 +90,11 @@ def translate_to_machine_instruction(line):
         elif isinstance(parts[1], int) and parts[1] < 256:
             val2 = bin_fixed_width(parts[1], 8)
         else:
-            raise Exception(f'Second value must be a buffer or a number: ({line})')
+            raise Exception(f'Second value must be a register or a number: ({line})')
     if len(parts) == 3:
         if isinstance(parts[2], int):
             if abs(parts[2]) < 256:
-                v = parts[2] if parts[2] >= 0 else 256 - parts[2]
+                v = parts[2] if parts[2] >= 0 else 256 + parts[2]
                 val2 = bin_fixed_width(v, 8)
             else:
                 raise Exception(f'Immediate value must be a between -255 and 255: ({line})')
@@ -153,7 +153,6 @@ class ExpectedMachineState:
             if value:
                 self.clock = 1
                 self.reg_write()
-                print(f'click while in phase {self.f}')
             else:
                 self.clock = 0
                 if self.f == [1, 0, 0, 0]:
@@ -165,7 +164,6 @@ class ExpectedMachineState:
                 elif self.f == [0, 0, 0, 1]:
                     self.f = [1, 0, 0, 0]
                 self.nf = [0 if (i == 1) else 1 for i in self.f]
-                print(f'move to phase {self.f}')
             if self.clock == 1 and self.f == [0, 0, 0, 1]:
                 a = 1
         elif line in [4, 5, 6, 7]:
@@ -199,6 +197,8 @@ class ExpectedMachineState:
     def src(self):
         """
         each bit should be implemented as src_n and not n3 or tgt_t and n3
+
+        ssi = (n3 and ti) or (not n3) and si
 
         """
         if self.r['N'][3]:
@@ -239,17 +239,19 @@ class ExpectedMachineState:
 
         """
         flag = {}
-        # f0 or (f1 and n4)
-        flag['P1'] = (self.nf[0]) and (self.nf[1] or not (self.r['N'][4]))
-        # f1 and not n4
-        flag['M1'] = (self.nf[1]) or self.r['N'][4]
+        n_read_source = self.nf[2] or self.r['N'][3]
+
+        # f0 or (f1 and n4) or (read_source and src[1])
+        flag['P1'] = (self.nf[0]) and (self.nf[1] or not (self.r['N'][4])) and (n_read_source or self.src()[1])
+        #(f1 and not n4) or (f2 and src[3])
+        flag['M1'] = (self.nf[1] or self.r['N'][4]) and (n_read_source or self.src()[3])
 
         # f2 and src[6]
-        flag['A'] = self.nf[2] or self.src()[6]
+        flag['A'] = n_read_source or self.src()[6]
         # f2 and (n2 and n3)
         flag['W'] = self.nf[2] or (not (self.r['N'][2]) or not (self.r['N'][3]))
         # f2 and src[7]
-        flag['R'] = self.nf[2] or self.src()[7]
+        flag['R'] = n_read_source or self.src()[7]
         return flag
 
     def bus_from_registers(self):
@@ -271,9 +273,12 @@ class ExpectedMachineState:
         if self.f[2] and self.r['N'][1]:  # ADV
             a = bin_to_value(self.bus_from_registers())
             b = bin_to_value(self.r['T'])
-            res = bin_fixed_width(a+b)
-            return [int(i) for i in res]
-        if self.f[2] and self.r['N'][1]:  # JMZ
+            res = a + b
+            if res > 255:
+                self.carry = 1
+                res = res - 256
+            return [int(i) for i in bin_fixed_width(res)]
+        if self.f[2] and self.r['N'][0]:  # JMZ
             a = bin_to_value(self.bus_from_registers())
             self.cmp = a == 0
             if self.cmp:
@@ -289,20 +294,23 @@ class ExpectedMachineState:
         click['N'] = self.f[0]
         click['T'] = self.f[1]
         click['W'] = self.f[1]
-        click['P1'] = (self.f[2] and not self.tgt()[1] and self.r['N'][2]
-                       # or (self.f[2] and self.cmp)
-                       # or (self.f[3] and not self.cmp)
+        # write in phase 2 for RDV, CPY, RDM - not WRT
+        write_target = (self.r['N'][2] and (self.r['N'][3] or self.r['N'][4]))
+        click['P1'] = (self.f[2] and not self.tgt()[1] and write_target
+                       or (self.f[2] and self.cmp)
+                       # or (self.f[3] and not self.cmp)  # this will pick up the program counter
                        )
-        click['M1'] = self.f[2] and not self.tgt()[3] and self.r['N'][2]
-        click['A'] = self.f[2] and not self.tgt()[6] and self.r['N'][2]
-        # write to R for n1 (add) or n2 (cpy) if target is R
-        click['R'] = self.f[2] and (not self.tgt()[7] and self.r['N'][2] or self.r['N'][1])
+        click['M1'] = self.f[2] and not self.tgt()[3] and write_target
+        click['A'] = self.f[2] and not self.tgt()[6] and write_target
+        # write to R for n1 (add) or n2 (cpy) and target is R
+        click['R'] = self.f[2] and ((not self.tgt()[7] and write_target) or self.r['N'][1])
         click['TP1'] = False
         return click
 
     def reg_write(self):
         """ Clock has had rising edge, write registers
         """
+        bus_value = copy.copy(self.bus_to_registers())
         click = self.clicks()
         if click['N']:
             self.r['N'] = copy.copy(self.bus_from_device)
@@ -310,7 +318,7 @@ class ExpectedMachineState:
             self.r['T'] = copy.copy(self.bus_from_device)
         for key in ['P1', 'M1', 'W', 'A', 'R']:
             if click[key]:
-                self.r[key] = copy.copy(self.bus_to_registers())
+                self.r[key] = bus_value
 
 
 class MyComputerInterface:
@@ -324,19 +332,22 @@ class MyComputerInterface:
     """
     MEMORY_DELAY = 0.01
 
-    def __init__(self, program, expected_machine_state: ExpectedMachineState):
+    def __init__(self, program, expected_machine_state: ExpectedMachineState, verbose=True):
         # self.device = pyk8055.device()
         self.device = DummyDevice(expected_machine_state)
         self.readable_memory = program
         self.memory = [translate_to_machine_instruction(line) for line in program]
         self.expected_machine_state = expected_machine_state
+        self.verbose = verbose
         self.clock = 0
         self.phase = 1
-        self.saved_address = -1
-        self.phase1_addr = -1
+        self.saved_address = -2
+        self.calculated_address = -2
+        self.prior_address = 0
 
     def log(self, message):
-        print(message)
+        if self.verbose:
+            print(message)
 
     def sleep(self):
         time.sleep(self.MEMORY_DELAY)
@@ -355,14 +366,14 @@ class MyComputerInterface:
         self.set_mem_bus_addr(address)
         self.sleep()
         vals = [str(self.device.digital_in(2 + i)) for i in range(4)]
-        self.log(f'reading {"".join(vals)} from address = {address}')
+        # self.log(f'reading {"".join(vals)} from address = {address}')
         return (8 * int(vals[0])
                 + 4 * int(vals[1])
                 + 2 * int(vals[2])
                 + 1 * int(vals[3]))
 
     def write_to_bus(self, address, vals):
-        self.log(f'writing {"".join(vals)} to address = {address}')
+        # self.log(f'writing {"".join(vals)} to address = {address}')
         self.set_mem_bus_addr(address)
         self.sleep()
         for i, c in enumerate(vals):
@@ -383,7 +394,25 @@ class MyComputerInterface:
             offset = 0
         return ind, offset
 
+    def full_cycle(self, n_cycles=1):
+        for i in range(n_cycles):
+            self.read_write_cycle()  # read instruction
+            self.toggle_clock()  # click 1
+
+            self.toggle_clock()  # to phase 2
+            self.read_write_cycle()  # read immediate or *M
+            self.toggle_clock()  # click 2
+
+            self.toggle_clock()  # to phase 3
+            self.read_write_cycle()  # write to *M if required
+            self.toggle_clock()  # click 3
+
+            self.toggle_clock()  # to phase 4
+            self.toggle_clock()  # click 4
+            self.toggle_clock()  # to phase 0
+
     def read_write_cycle(self):
+        # Get address from device
         address = 0
         mult = 16
         for i in range(2):
@@ -391,6 +420,29 @@ class MyComputerInterface:
             address = address + mult * self.read_from_bus(i)
             mult = mult // 16
 
+        read_address = address
+        # Check if program counter is not incrementing - for now
+        if self.phase == 1:
+            if read_address == self.prior_address:
+                self.calculated_address += 2
+                address = self.calculated_address
+                self.log(f'Looks like address is not incrementing, manually setting to {address}')
+            else:
+                self.calculated_address = address
+                self.log(f'Looks like address has actually been set to {address}')
+        elif self.phase == 2 and (read_address == self.prior_address):
+            address = self.calculated_address + 1
+            self.log(f'Looks like address is not incrementing, manually setting to {address}')
+
+        if self.phase == 1:
+            self.prior_address = read_address
+
+        # save phase 2 address in case needed for write in phase 3
+        # hack while I think of how to pass the address and value back to the device on the same cycle
+        if self.phase == 2:
+            self.saved_address = address
+
+        # If we are in phase 3, check if write is required
         if self.phase == 3:
             write = self.device.digital_in(1)
             if write:
@@ -414,27 +466,13 @@ class MyComputerInterface:
             else:
                 return
 
-        # Hack because program counter does not increment yet
-        if address == 0 and self.phase1_addr >= 0:
-            address = self.phase1_addr
-            if self.phase == 1:
-                address += 2
-            self.log(f'Looks like address is not incrementing, manually setting to {address}')
-        if self.phase == 1:
-            # save address while incrementing is not happening
-            self.phase1_addr = address
-        if self.phase == 2 and address != self.phase1_addr:
-            # save phase 2 address in case needed for write in phase 3
-            # hack while I think of how to pass the address and value back to the device on the same cycle
-            self.saved_address = address
-        elif self.phase == 2:
-            # hack, always read from addr+1 since I don't have the logic for *P
-            address += 1
-
+        # Read contents of location and send to device
         ind, offset = self._ind_and_offset(address)
         if ind >= len(self.memory):
             self.log(f'address {address} is out of range,  returning 0')
             address = 0
+            ind = 0
+            offset = 0
         value = self.memory[ind]
         self.log(f'contents at {address}: {self.memory[ind]} / {self.readable_memory[ind]}')
         self.write_to_bus(6, value[offset:(offset + 4)])

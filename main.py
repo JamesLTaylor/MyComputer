@@ -262,77 +262,31 @@ class TestTab(QWidget):
 
     def cycle_clicked(self):
         try:
-            interface.read_write_cycle()  # read instruction
-            if self.state.bus_from_device == [0, 0, 0, 0, 0, 0, 0, 0]:
-                return
-            interface.toggle_clock()  # click 1
-            self.update_data()
-            interface.toggle_clock()  # to phase 2
-            interface.read_write_cycle()  # read immediate or *M
-            interface.toggle_clock()  # click 2
-            self.update_data()
-            interface.toggle_clock()  # to phase 3
-            interface.read_write_cycle()  # write to *M if required
-            interface.toggle_clock()  # click 3
-            self.update_data()
-            interface.toggle_clock()  # to phase 4
-
-            interface.toggle_clock()  # click 4
-            interface.toggle_clock()  # to phase 0
+            interface.full_cycle(1)
             self.update_data()
         except Exception as ex:
             print(ex)
             print(traceback.format_exc())
 
 
-
-def test_run():
-    for i in range(4):
-        # start in phase 0 with clock on low
-        interface.read_write_cycle()  # read instruction
-        interface.toggle_clock()  # click 1
-        interface.toggle_clock()  # to phase 2
-        interface.read_write_cycle()  # read immediate or *M
-        interface.toggle_clock()  # click 2
-        interface.toggle_clock()  # to phase 3
-        interface.read_write_cycle()  # write to *M if required
-        interface.toggle_clock()  # click 3
-        interface.toggle_clock()  # to phase 4
-
-        interface.toggle_clock()  # click 4
-        interface.toggle_clock()  # to phase 0
-
-    # computer = MyComputer()
-    # computer.write_to_bus(5, 1)
-    # computer.write_to_bus(6, 2)
-    # computer.write_to_bus(5, 3)
-    # computer.write_to_bus(6, 4)
-
-
-
 if __name__ == '__main__':
-
     # 7x11
-    program711 = ['RDV A 40',
-                  'CPY A M1',
-                  'RDV A 25',
-                  'WRT A',
-                  'RDM R',
-                  'RDV M1 40',  # Initialize
-                  'RDV A 11',
+    program711 = ['RDV M1 40',  # Initialize
+                  'RDV A 0',
                   'WRT A',
                   'RDV M1 42',
                   'RDV A 7',
                   'WRT A',
-                  'RDV M1 40',   #addr 12 / start of loop / adds 11 to m20
+                  'RDV M1 40',   #addr 12 / start of loop / adds 11 to m40 / subtracts 1 from m42
+                  'RDV P1 16',   # manually bump to 16 (next) so that when P1 is set again it can be recognized
                   'RDM A',
                   'ADV A 11',
-                  'WRT A',
+                  'WRT R',
                   'RDV M1 42',  # Subtract 1 from m22
                   'RDM A',
                   'ADV A -1',
-                  'WRT A',
-                  'JMZ A 32',  # if m22 is zero then exit loop
+                  'WRT R',
+                  'JMZ R 34',  # if m22 is zero then exit loop
                   'RDV P1 12',  # location 30
                   'NOP'        # end of program
                   ]
