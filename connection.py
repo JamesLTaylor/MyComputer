@@ -201,6 +201,7 @@ class ExpectedMachineState:
         ssi = (n3 and ti) or (not n3) and si
 
         """
+        return self._src_n()
         if self.r['N'][3]:
             return self._tgt_t()
         else:
@@ -217,6 +218,7 @@ class ExpectedMachineState:
             return self._tgt_t()
 
     def write(self):
+        # This will write on WRT and RDM, but that is OK since RDM will rewrite the same value.
         return self.r['N'][2] and not self.r['N'][4]
 
     def get(self, line):
@@ -239,17 +241,18 @@ class ExpectedMachineState:
 
         """
         flag = {}
-        n_read_source = self.nf[2] or self.r['N'][3]
+        n_read_source = self.nf[2] or self.r['N'][3] # not read source
 
         # f0 or (f1 and n4) or (read_source and src[1])
         flag['P1'] = (self.nf[0]) and (self.nf[1] or not (self.r['N'][4])) and (n_read_source or self.src()[1])
-        #(f1 and not n4) or (f2 and src[3])
+        # (f1 and not n4) or (f2 and src[3])
         flag['M1'] = (self.nf[1] or self.r['N'][4]) and (n_read_source or self.src()[3])
 
         # f2 and src[6]
         flag['A'] = n_read_source or self.src()[6]
         # f2 and (n2 and n3)
-        flag['W'] = self.nf[2] or (not (self.r['N'][2]) or not (self.r['N'][3]))
+        # negated: f2' or (n2 nand n3)
+        flag['W'] = self.nf[2] or (not (self.r['N'][2] and self.r['N'][3]))
         # f2 and src[7]
         flag['R'] = n_read_source or self.src()[7]
         return flag
@@ -344,6 +347,7 @@ class MyComputerInterface:
         self.saved_address = -2
         self.calculated_address = -2
         self.prior_address = 0
+        self.custom_command = None
 
     def log(self, message):
         if self.verbose:
@@ -473,8 +477,12 @@ class MyComputerInterface:
             address = 0
             ind = 0
             offset = 0
-        value = self.memory[ind]
-        self.log(f'contents at {address}: {self.memory[ind]} / {self.readable_memory[ind]}')
+        if self.custom_command:
+            value = self.custom_command
+            self.log(f'Running custom command: {value}')
+        else:
+            value = self.memory[ind]
+            self.log(f'contents at {address}: {self.memory[ind]} / {self.readable_memory[ind]}')
         self.write_to_bus(6, value[offset:(offset + 4)])
         self.write_to_bus(7, value[(offset + 4):(offset + 8)])
 

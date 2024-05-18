@@ -87,5 +87,35 @@ class TestMyComputerInterface(TestCase):
         self.assertEqual(p1, 6)
         self.assertEqual(a, 3)
 
+    def test_cpy(self):
+        for src in self.regs:
+            for tgt in self.regs:
+                if tgt == src:
+                    continue
+                state = ExpectedMachineState()
+                program = [f'RDV {src} 2', f'CPY {src} {tgt}']
+                # set to 2 so consistent woth P1 value adter 1 cycle
+
+                interface = MyComputerInterface(program, state, verbose=False)
+                p_before = bin_to_value(state.r[tgt])
+                interface.full_cycle(2)
+                p_after = bin_to_value(state.r[tgt])
+                self.assertEqual(p_before, 0)
+                self.assertEqual(p_after, 2)
+
+    def test_rdm(self):
+        for tgt in self.regs:
+            # if tgt == 'M1':
+            #     continue
+            state = ExpectedMachineState()
+            program = [f'RDV M1 4', f'RDM {tgt}', '25']
+            interface = MyComputerInterface(program, state, verbose=True)
+            interface.full_cycle(2)
+            val = bin_to_value(state.r[tgt])
+            self.assertEqual(val, 25)
+
+
+
+
 
 
