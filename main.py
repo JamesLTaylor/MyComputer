@@ -1,5 +1,6 @@
 from connection import translate_to_machine_instruction, MyComputerInterface, ExpectedMachineState, bin_to_value
-from PyQt5.QtWidgets import QApplication, QWidget, QTabWidget, QGridLayout, QLabel, QPlainTextEdit, QFrame, QScrollArea
+from PyQt5.QtWidgets import QApplication, QWidget, QTabWidget, QGridLayout, QLabel, QPlainTextEdit, QFrame, QScrollArea, \
+    QCheckBox
 from PyQt5.QtCore import Qt, QSize
 import traceback
 
@@ -84,6 +85,24 @@ class TestTab(QWidget):
         # sep.setLineWidth(3)
         # layout.addWidget(sep)
 
+        row_custom = QHBoxLayout()
+        self.use_custom = QCheckBox()
+
+        self.use_custom.clicked.connect(self.custom_toggle)
+        row_custom.addWidget(self.use_custom)
+        row_custom.addWidget(QLabel('Custom'))
+        self.custom_command = QLineEdit('command', enabled=False)
+        self.custom_command.textChanged.connect(self.command_changed)
+        row_custom.addWidget(self.custom_command)
+        row_custom.addWidget(QLabel('Translated'))
+        self.translated_command = QLineEdit('', enabled=False)
+        row_custom.addWidget(self.translated_command)
+        row_custom.addWidget(QLabel('Calc Address'))
+        self.calc_address = QLineEdit('0', readOnly=True)
+        row_custom.addWidget(self.calc_address)
+        row_custom.addStretch()
+        self.layout.addLayout(row_custom)
+
         # Command:
         row_clock = QHBoxLayout()
         self.toggle = QPushButton('Toggle Clock')
@@ -165,6 +184,21 @@ class TestTab(QWidget):
             self.add_row(name)
         self.update_data()
 
+    def command_changed(self):
+        try:
+            self.translated_command.setText(translate_to_machine_instruction(self.custom_command.text()))
+            self.computer.custom_command = self.translated_command.text()
+        except Exception as ex:
+            print(ex)
+            print(traceback.format_exc())
+
+    def custom_toggle(self, value):
+        if value:
+            self.custom_command.setEnabled(True)
+        else:
+            self.custom_command.setEnabled(False)
+            self.computer.custom_command = None
+
     def add_row(self, name):
         row_n = QHBoxLayout()
         row_n.addWidget(QLabel(f'{name}:'))
@@ -192,6 +226,7 @@ class TestTab(QWidget):
         for i, (m, rm) in enumerate(zip(self.computer.memory, self.computer.readable_memory)):
             rows.append(f'{i * 2:<5} {m:<20}  {rm}')
         self.mem.setPlainText('\n'.join(rows))
+        self.calc_address.setText(str(self.computer.calculated_address))
 
         # bus from device and clock
         self.bus_from_device.setText(txt(self.state.bus_from_device))
