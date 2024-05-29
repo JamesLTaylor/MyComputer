@@ -327,7 +327,7 @@ if __name__ == '__main__':
                   ]
     program711 += ['0']*10
     expected_machine_state = ExpectedMachineState()
-    interface = MyComputerInterface(program711, expected_machine_state)
+    interface = MyComputerInterface(program711, expected_machine_state, real_device=True)
 
     app = QApplication(sys.argv)
     window = MainWindow(interface)

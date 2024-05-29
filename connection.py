@@ -23,14 +23,14 @@ registers = {'P0': '000',
              }
 registers_inv = {v: k for k, v in registers.items()}
 
-device_bus_addr = {0: '000',  # P1 first 4
-                   1: '001',
+device_bus_addr = {0: '111',  # P1 first 4
+                   1: '011',
                    2: '010',  # P2 first 4 - not used yet
-                   3: '011',
-                   4: '100',  # general read from computer first 4
-                   5: '101',
-                   6: '110',  # output
-                   7: '111'}
+                   3: '001',
+                   4: '110',  # general read from computer first 4
+                   5: '010',
+                   6: '100',  # output
+                   7: '000'}
 device_bus_addr_inv = {v: k for k, v in device_bus_addr.items()}
 
 
@@ -202,10 +202,6 @@ class ExpectedMachineState:
 
         """
         return self._src_n()
-        if self.r['N'][3]:
-            return self._tgt_t()
-        else:
-            return self._src_n()
 
     def tgt(self):
         """
@@ -222,16 +218,16 @@ class ExpectedMachineState:
         return self.r['N'][2] and not self.r['N'][4]
 
     def get(self, line):
-        if line == 1:
+        if line == 5:
             return self.write()
         if self.bus_addr() == 0:
-            return self.bus_from_registers()[line - 2]
+            return self.bus_from_registers()[line - 1]
         elif self.bus_addr() == 1:
-            return self.bus_from_registers()[line + 2]
+            return self.bus_from_registers()[line + 3]
         if self.bus_addr() == 4:
-            return self.bus_from_registers()[line - 2]
+            return self.bus_from_registers()[line - 1]
         elif self.bus_addr() == 5:
-            return self.bus_from_registers()[line + 2]
+            return self.bus_from_registers()[line + 3]
         return 0
 
     def flags(self):
@@ -244,6 +240,7 @@ class ExpectedMachineState:
         n_read_source = self.nf[2] or self.r['N'][3] # not read source
 
         # f0 or (f1 and n4) or (read_source and src[1])
+        # negated: f0' and (f1 nand n4) and (n_read_source or s1)
         flag['P1'] = (self.nf[0]) and (self.nf[1] or not (self.r['N'][4])) and (n_read_source or self.src()[1])
         # (f1 and not n4) or (f2 and src[3])
         flag['M1'] = (self.nf[1] or self.r['N'][4]) and (n_read_source or self.src()[3])
@@ -333,10 +330,13 @@ class MyComputerInterface:
     writes 8 bits out on 6, 7
 
     """
-    MEMORY_DELAY = 0.01
+    MEMORY_DELAY = 0.1
 
-    def __init__(self, program, expected_machine_state: ExpectedMachineState, verbose=True):
-        # self.device = pyk8055.device()
+    def __init__(self, program, expected_machine_state: ExpectedMachineState, verbose=True, real_device=False):
+        if real_device:
+            self.real_device = pyk8055.device()
+        else:
+            self.real_device = None
         self.device = DummyDevice(expected_machine_state)
         self.readable_memory = program
         self.memory = [translate_to_machine_instruction(line) for line in program]
@@ -349,6 +349,9 @@ class MyComputerInterface:
         self.prior_address = 0
         self.custom_command = None
 
+    def enable_real(self):
+        self.real_device = pyk8055.device()
+
     def log(self, message):
         if self.verbose:
             print(message)
@@ -360,17 +363,17 @@ class MyComputerInterface:
         vals = device_bus_addr[value]
         for i, c in enumerate(vals):
             if c == '0':
-                self.device.digital_off(2 + i)
+                self.digital_off(2 + i)
             else:
-                self.device.digital_on(2 + i)
+                self.digital_on(2 + i)
 
     def read_from_bus(self, address):
         """ Read from bus and return value
         """
         self.set_mem_bus_addr(address)
         self.sleep()
-        vals = [str(self.device.digital_in(2 + i)) for i in range(4)]
-        # self.log(f'reading {"".join(vals)} from address = {address}')
+        vals = [str(self.digital_in(1 + i)) for i in range(4)]
+        self.log(f'reading {"".join(vals)} from address = {address}')
         return (8 * int(vals[0])
                 + 4 * int(vals[1])
                 + 2 * int(vals[2])
@@ -382,9 +385,9 @@ class MyComputerInterface:
         self.sleep()
         for i, c in enumerate(vals):
             if c == '0':
-                self.device.digital_off(5 + i)
+                self.digital_off(5 + i)
             else:
-                self.device.digital_on(5 + i)
+                self.digital_on(5 + i)
 
     def _ind_and_offset(self, address):
         """
@@ -420,7 +423,6 @@ class MyComputerInterface:
         address = 0
         mult = 16
         for i in range(2):
-            self.set_mem_bus_addr(i)
             address = address + mult * self.read_from_bus(i)
             mult = mult // 16
 
@@ -448,13 +450,12 @@ class MyComputerInterface:
 
         # If we are in phase 3, check if write is required
         if self.phase == 3:
-            write = self.device.digital_in(1)
+            write = self.digital_in(5)
             if write:
                 # Do something if write is True
                 mult = 16
                 value = 0
-                for i in [4, 5]:
-                    self.set_mem_bus_addr(i)
+                for i in [0, 1]:  #[4, 5]:
                     value = value + mult * self.read_from_bus(i)
                     mult = mult // 16
                 self.log(f'writing {value} to {self.saved_address}')
@@ -483,17 +484,38 @@ class MyComputerInterface:
         else:
             value = self.memory[ind]
             self.log(f'contents at {address}: {self.memory[ind]} / {self.readable_memory[ind]}')
-        self.write_to_bus(6, value[offset:(offset + 4)])
         self.write_to_bus(7, value[(offset + 4):(offset + 8)])
+        self.write_to_bus(6, value[offset:(offset + 4)])
+
+
+    def digital_on(self, pos):
+        self.device.digital_on(pos)
+        if self.real_device:
+            self.real_device.digital_on(pos)
+
+    def digital_off(self, pos):
+        self.device.digital_off(pos)
+        if self.real_device:
+            self.real_device.digital_off(pos)
+
+    def digital_in(self, pos):
+        if self.real_device:
+            val = self.real_device.digital_in(pos)
+            print(f'{pos} before {val}')
+            val = 0 if val == 1 else 1
+            print(f'{pos} before {val}')
+            return val
+        else:
+            return self.device.digital_in(pos)
 
     def toggle_clock(self):
         # Get address from computer via device
         if self.clock == 0:
             self.clock = 1
-            self.device.digital_on(1)
+            self.digital_on(1)
         else:
             self.clock = 0
-            self.device.digital_off(1)
+            self.digital_off(1)
             self.phase += 1
             if self.phase == 5:
                 self.phase = 1
