@@ -330,7 +330,7 @@ class MyComputerInterface:
     writes 8 bits out on 6, 7
 
     """
-    MEMORY_DELAY = 0.1
+    MEMORY_DELAY = 0.3
 
     def __init__(self, program, expected_machine_state: ExpectedMachineState, verbose=True, real_device=False):
         if real_device:
@@ -357,7 +357,8 @@ class MyComputerInterface:
             print(message)
 
     def sleep(self):
-        time.sleep(self.MEMORY_DELAY)
+        if self.real_device:
+            time.sleep(self.MEMORY_DELAY)
 
     def set_mem_bus_addr(self, value):
         vals = device_bus_addr[value]
@@ -472,16 +473,20 @@ class MyComputerInterface:
                 return
 
         # Read contents of location and send to device
-        ind, offset = self._ind_and_offset(address)
-        if ind >= len(self.memory):
+        if address >= 2*len(self.memory):
             self.log(f'address {address} is out of range,  returning 0')
             address = 0
-            ind = 0
-            offset = 0
         if self.custom_command:
+            if self.phase == 1:
+                offset = 0
+            else:
+                offset = 9
+                if self.custom_command[:5] == '00110':  # Special treatment for custom RDM command
+                    self.memory[self.saved_address // 2]
             value = self.custom_command
             self.log(f'Running custom command: {value}')
         else:
+            ind, offset = self._ind_and_offset(address)
             value = self.memory[ind]
             self.log(f'contents at {address}: {self.memory[ind]} / {self.readable_memory[ind]}')
         self.write_to_bus(7, value[(offset + 4):(offset + 8)])
@@ -501,15 +506,15 @@ class MyComputerInterface:
     def digital_in(self, pos):
         if self.real_device:
             val = self.real_device.digital_in(pos)
-            print(f'{pos} before {val}')
             val = 0 if val == 1 else 1
-            print(f'{pos} before {val}')
             return val
         else:
             return self.device.digital_in(pos)
 
     def toggle_clock(self):
         # Get address from computer via device
+        if self.real_device:
+            time.sleep(0.1)
         if self.clock == 0:
             self.clock = 1
             self.digital_on(1)

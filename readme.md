@@ -22,8 +22,8 @@ The basic cycle is:
  * if write, take contents on data bus and write them to the memory 
 
 ## Pins
-* In1 = R/W flag
-* In2-5 = data from computer
+* In5 = R/W flag
+* In1-4 = data from computer
 * Out1 = clock
 * Out2-Out4 = bus address
 * Out 5-8 = data read from memory
@@ -37,16 +37,59 @@ The basic cycle is:
  * 6, 7 = 8 bits of data from MyComputer
 
 ## Cycle
- * read 0, 1, 2, 3 into address pointer
- * read In1 into R/W
- * if R
-   * read data at address pointer and put it on 4, 5
- * if W
-   * read data at 6,7 and write it to address pointer and
- * Toggle clock
+ * start in phase 0
+ * Read/write
+ * click to 1 (writes N)
+ * click to 0 (moves to phase 1)
+ * Read/write
+ * click to 1 (writes to W & T)
+ * click to 0 (moves to phase 2)
+ * calculations take place in this phase
+ * click to 1 (write result of calculations)
+ * click to 0 (moves to phase 3)
+ * click to 1 (*future* write incremented program counter)
+ * click to 0 (moves to phase 0)
+ 
+## Wiring status
 
-## Computer Cycle
-1. off->on: transition to next state 0
-2. off->on: temp register write
-3. off>on: transition to state 1
-4. off-on: final register/mem write
+### Clicks
+Clicks control when a register will write the contents of the bus to registers
+
+| Name | Wired | Tested | 
+|------|-------|--------|
+| P1   | No    |        |
+| M1   | Yes   |        |
+| W    | Yes   |        |
+| A    | Yes   |        |
+| R    | No    |        |
+| N    | Yes   |        |
+| TN   | Yes   |        |
+
+### Flags
+
+Flags control which register is enabled to so that its contents are presented to the bus from registers.
+
+| Name | Wired                           | Tested | 
+|------|---------------------------------|--------|
+| P1   | only RDV, CPY. open OR for rest |        |
+| M1   | Yes                             |        |
+| W    | Yes                             |        |
+| A    | Yes                             |        |
+| R    | Only for RDV, CPY. need for ADV |        |
+ 
+### Instructions
+| Name | Wired | Comment | 
+|------|-------|---------|
+| RDV  | Yes   |         |
+| CPY  | Yes   |         |
+| WRT  | Yes   |         |
+| RDM  | Yes   |         |
+| ADV  |       |         |
+| ADM  |       |         |
+| JMZ  |       |         |
+| ---  | ---   | ---     |
+| DBG  |       |         |
+| PAG  |       |         |
+
+
+
