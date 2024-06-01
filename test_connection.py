@@ -109,7 +109,7 @@ class TestMyComputerInterface(TestCase):
             #     continue
             state = ExpectedMachineState()
             program = [f'RDV M1 4', f'RDM {tgt}', '25']
-            interface = MyComputerInterface(program, state, verbose=True)
+            interface = MyComputerInterface(program, state, verbose=False)
             interface.full_cycle(2)
             val = bin_to_value(state.r[tgt])
             self.assertEqual(val, 25)

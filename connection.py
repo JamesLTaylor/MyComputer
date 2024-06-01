@@ -140,7 +140,7 @@ class ExpectedMachineState:
         self.nf = [0, 1, 1, 1]
         self.clock = 0
 
-        self.cmp = 0
+        self.cmp = 1
         self.carry = 0
 
     def bus_addr(self):
@@ -280,8 +280,8 @@ class ExpectedMachineState:
             return [int(i) for i in bin_fixed_width(res)]
         if self.f[2] and self.r['N'][0]:  # JMZ
             a = bin_to_value(self.bus_from_registers())
-            self.cmp = a == 0
-            if self.cmp:
+            self.cmp = a != 0
+            if not self.cmp:
                 return copy.copy(self.r['T'])
             else:
                 return None
@@ -296,14 +296,16 @@ class ExpectedMachineState:
         click['W'] = self.f[1]
         # write in phase 2 for RDV, CPY, RDM - not WRT
         write_target = (self.r['N'][2] and (self.r['N'][3] or self.r['N'][4]))
-        click['P1'] = (self.f[2] and not self.tgt()[1] and write_target
-                       or (self.f[2] and self.cmp)
-                       # or (self.f[3] and not self.cmp)  # this will pick up the program counter
+        cmp_tmp = (not self.cmp) and n[0]
+        p1_wrt_tmp = not self.tgt()[1] and write_target
+        click['P1'] = (self.f[2] and p1_wrt_tmp
+                       or (self.f[2] and cmp_tmp)
+                       # or (self.f[3] and not cmp_tmp and not p1_wrt_tmp)  # this will pick up the program counter
                        )
         click['M1'] = self.f[2] and not self.tgt()[3] and write_target
         click['A'] = self.f[2] and not self.tgt()[6] and write_target
         # write to R for n1 (add) or n2 (cpy) and target is R
-        click['R'] = self.f[2] and ((not self.tgt()[7] and write_target) or self.r['N'][1])
+        click['R'] = (self.f[2] and (not self.tgt()[7] and write_target)) or (self.f[2] and self.r['N'][1])
         click['TP1'] = False
         return click
 
