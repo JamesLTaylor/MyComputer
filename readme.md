@@ -78,18 +78,32 @@ Flags control which register is enabled to so that its contents are presented to
 | R    | Only for RDV, CPY. need for ADV |        |
  
 ### Instructions
-| Name | Wired | Comment | 
-|------|-------|---------|
-| RDV  | Yes   |         |
-| CPY  | Yes   |         |
-| WRT  | Yes   |         |
-| RDM  | Yes   |         |
-| ADV  |       |         |
-| ADM  |       |         |
-| JMZ  |       |         |
-| ---  | ---   | ---     |
-| DBG  |       |         |
-| PAG  |       |         |
+| Name | Binary | Wired | Comment       | 
+|------|--------|-------|---------------|
+| RDV  | 00111  | Yes   |               |
+| CPY  | 00101  | Yes   |               |
+| WRT  | 00100  | Yes   |               |
+| RDM  | 00110  | Yes   |               |
+| ADV  | 01001  |       |               |
+| ADM  | 01000  |       |               |
+| JMZ  | 10001  |       |               |
+| ---  |        | ---   | ---           |
+| PAG  |        |       | Page M1 or P1 |
+
+Instruction bits are n0 n1 n2 n3 n4
+
+### Registers
+
+| Index | Binary  | Name     |
+|-------|---------|----------|
+| ~~0~~ | ~~000~~ | ~~P0~~   |
+| 1     | 001     | P1       |
+| ~~2~~ | ~~010~~ | ~~M0~~   |
+| 3     | 011     | M1       |
+| 4     | 100     | *unused* |
+| 5     | 101     | *unused* |
+| 6     | 110     | A        |
+| 7     | 111     | R        |
 
 
 
