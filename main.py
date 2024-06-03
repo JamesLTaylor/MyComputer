@@ -310,7 +310,7 @@ if __name__ == '__main__':
                   'RDV A 0',
                   'WRT A',
                   'RDV M1 42',
-                  'RDV A 7',
+                  'RDV A 2',
                   'WRT A',
                   'RDV M1 40',   #addr 12 / start of loop / adds 11 to m40 / subtracts 1 from m42
                   'RDV P1 16',   # manually bump to 16 (next) so that when P1 is set again it can be recognized

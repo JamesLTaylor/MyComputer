@@ -88,9 +88,12 @@ Flags control which register is enabled to so that its contents are presented to
 | ADM  | 01000  |       |               |
 | JMZ  | 10001  |       |               |
 | ---  |        | ---   | ---           |
-| PAG  |        |       | Page M1 or P1 |
+| PAG  | 11001  |       | Page M1 or P1 |
 
-Instruction bits are n0 n1 n2 n3 n4
+Instruction bits are n0 n1 n2 n3 n4.
+
+* n4 says phase 2 should load from P+1 not M1
+* n3 says first address is Target not Source.
 
 ### Registers
 

@@ -281,6 +281,7 @@ class ExpectedMachineState:
         if self.f[2] and self.r['N'][0]:  # JMZ
             a = bin_to_value(self.bus_from_registers())
             self.cmp = a != 0
+            # 0 when it should expose this: (n0 nand f2) or cmp
             if not self.cmp:
                 return copy.copy(self.r['T'])
             else:
