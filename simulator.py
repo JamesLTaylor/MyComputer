@@ -123,7 +123,10 @@ class ExpectedMachineState:
         if self.bus_addr() == 0:
             return self.bus_from_registers()[line - 1]
         elif self.bus_addr() == 1:
-            return self.bus_from_registers()[line + 3]
+            val = self.bus_from_registers()[line + 3]
+            if line == 4:
+                val = int(self.nf[0] and bool(val))
+            return val
         if self.bus_addr() == 4:
             return self.r['TM1'][line - 1]
         elif self.bus_addr() == 5:
@@ -227,6 +230,8 @@ class ExpectedMachineState:
             if res > 255:
                 res = res - 256
             self.r['TP1'] = [int(i) for i in bin_fixed_width(res)]
-        for key in ['P1', 'M1', 'W', 'A', 'R', 'TM1']:
+        if click['TM1']:
+            self.r['TM1'] = copy.copy(self.bus_from_registers())
+        for key in ['P1', 'M1', 'W', 'A', 'R']:
             if click[key]:
                 self.r[key] = bus_value

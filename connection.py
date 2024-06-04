@@ -30,10 +30,9 @@ class MyComputerInterface:
         self.verbose = verbose
         self.clock = 0
         self.phase = 1
-        self.saved_address = -2
-        self.calculated_address = -2
-        self.prior_address = 0
+        self.current_address = -1
         self.custom_command = None
+        self.set_p1()
 
     def enable_real(self):
         self.real_device = pyk8055.device()
@@ -107,78 +106,64 @@ class MyComputerInterface:
             self.toggle_clock()  # click 4
             self.toggle_clock()  # to phase 0
 
-    def read_write_cycle(self):
-        # Get address from device
-        address = 0
+    def set_p1(self):
+        self.custom_command = translate_to_machine_instruction('RDV P1 1')
+        self.full_cycle()
+        self.custom_command = None
+
+    def get8bit(self, addr1, addr2):
+        value = 0
         mult = 16
-        for i in range(2):
-            address = address + mult * self.read_from_bus(i)
+        for i in [addr1, addr2]:
+            value = value + mult * self.read_from_bus(i)
             mult = mult // 16
+        return value
 
-        read_address = address
-        # Check if program counter is not incrementing - for now
+    def run_custom(self):
         if self.phase == 1:
-            if read_address == self.prior_address:
-                self.calculated_address += 2
-                address = self.calculated_address
-                self.log(f'Looks like address is not incrementing, manually setting to {address}')
-            else:
-                self.calculated_address = address
-                self.log(f'Looks like address has actually been set to {address}')
-        elif self.phase == 2 and (read_address == self.prior_address):
-            address = self.calculated_address + 1
-            self.log(f'Looks like address is not incrementing, manually setting to {address}')
-
-        if self.phase == 1:
-            self.prior_address = read_address
-
-        # save phase 2 address in case needed for write in phase 3
-        # hack while I think of how to pass the address and value back to the device on the same cycle
-        if self.phase == 2:
-            self.saved_address = address
-
-        # If we are in phase 3, check if write is required
-        if self.phase == 3:
-            write = self.digital_in(5)
-            if write:
-                # Do something if write is True
-                mult = 16
-                value = 0
-                for i in [0, 1]:  #[4, 5]:
-                    value = value + mult * self.read_from_bus(i)
-                    mult = mult // 16
-                self.log(f'writing {value} to {self.saved_address}')
-                ind, offset = self._ind_and_offset(self.saved_address)
-                parts = self.readable_memory[ind].split()
-                parts = parts + ['0'] * (2-len(parts))
-                if offset == 0:
-                    self.memory[ind] = bin_fixed_width(value) + self.memory[ind][8:]
-                    self.readable_memory[ind] = str(value) + ' ' + parts[1]
-                else:
-                    self.memory[ind] = self.memory[ind][:9] + bin_fixed_width(value)
-                    self.readable_memory[ind] = parts[0] + ' ' + str(value)
-            else:
-                return
-
-        # Read contents of location and send to device
-        if address >= 2*len(self.memory):
-            self.log(f'address {address} is out of range,  returning 0')
-            address = 0
-        if self.custom_command:
-            if self.phase == 1:
-                offset = 0
-            else:
-                offset = 9
-                if self.custom_command[:5] == '00110':  # Special treatment for custom RDM command
-                    self.memory[self.saved_address // 2]
-            value = self.custom_command
-            self.log(f'Running custom command: {value}')
+            offset = 0
         else:
+            offset = 9
+            if self.custom_command[:5] == '00110':  # Special treatment for custom RDM command
+                address = self.get8bit(0, 1)
+                self.memory[address // 2]
+        value = self.custom_command
+        self.log(f'Running custom command: {value}')
+        self.write_to_bus(7, value[(offset + 4):(offset + 8)])
+        self.write_to_bus(6, value[offset:(offset + 4)])
+
+    def read_write_cycle(self):
+        if self.custom_command:
+            self.run_custom()
+            return
+        # Get address from device
+        if self.phase in [1, 2]:
+            address = self.get8bit(0, 1)
+            self.current_address = address
+            # Read contents of location and send to device
+            if address >= 2 * len(self.memory):
+                self.log(f'address {address} is out of range,  returning 0')
+                address = 0
             ind, offset = self._ind_and_offset(address)
             value = self.memory[ind]
             self.log(f'contents at {address}: {self.memory[ind]} / {self.readable_memory[ind]}')
-        self.write_to_bus(7, value[(offset + 4):(offset + 8)])
-        self.write_to_bus(6, value[offset:(offset + 4)])
+            self.write_to_bus(7, value[(offset + 4):(offset + 8)])
+            self.write_to_bus(6, value[offset:(offset + 4)])
+        # If we are in phase 3, check if write is required
+        elif self.phase == 3 and self.digital_in(5):
+            # Do something if write is True
+            address = self.get8bit(4, 5)
+            value = self.get8bit(0, 1)
+            self.log(f'writing {value} to {address}')
+            ind, offset = self._ind_and_offset(address)
+            parts = self.readable_memory[ind].split()
+            parts = parts + ['0'] * (2-len(parts))
+            if offset == 0:
+                self.memory[ind] = bin_fixed_width(value) + self.memory[ind][8:]
+                self.readable_memory[ind] = str(value) + ' ' + parts[1]
+            else:
+                self.memory[ind] = self.memory[ind][:9] + bin_fixed_width(value)
+                self.readable_memory[ind] = parts[0] + ' ' + str(value)
 
 
     def digital_on(self, pos):

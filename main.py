@@ -142,9 +142,9 @@ class TestTab(QWidget):
         row_custom.addWidget(QLabel('Translated'))
         self.translated_command = QLineEdit('', enabled=False)
         row_custom.addWidget(self.translated_command)
-        row_custom.addWidget(QLabel('Calc Address'))
-        self.calc_address = QLineEdit('0', readOnly=True)
-        row_custom.addWidget(self.calc_address)
+        row_custom.addWidget(QLabel('Curr Address'))
+        self.curr_address = QLineEdit('0', readOnly=True)
+        row_custom.addWidget(self.curr_address)
         row_custom.addStretch()
         self.layout.addLayout(row_custom)
 
@@ -272,7 +272,7 @@ class TestTab(QWidget):
         for i, (m, rm) in enumerate(zip(self.interface.memory, self.interface.readable_memory)):
             rows.append(f'{i * 2:<5} {m:<20}  {rm}')
         self.mem.setPlainText('\n'.join(rows))
-        self.calc_address.setText(str(self.interface.calculated_address))
+        self.curr_address.setText(str(self.interface.current_address))
 
         # bus from device and clock
         self.bus_from_device.setText(txt(self.state.bus_from_device))
@@ -363,7 +363,6 @@ def run():
                   'RDV A 2',
                   'WRT A',
                   'RDV M1 40',  # addr 12 / start of loop / adds 11 to m40 / subtracts 1 from m42
-                  'RDV P1 16',  # manually bump to 16 (next) so that when P1 is set again it can be recognized
                   'RDM A',
                   'ADV A 11',
                   'WRT R',
@@ -372,16 +371,13 @@ def run():
                   'ADV A -1',
                   'WRT R',
                   'JMZ R 34',  # if m22 is zero then exit loop
-                  'RDV P1 12',  # location 30
+                  'RDV P1 13',  # jump to start of loop
                   'NOP'  # end of program
                   ]
     program711 += ['0'] * 10
     expected_machine_state = ExpectedMachineState()
     # interface = MyComputerInterface(program711, expected_machine_state, real_device=True)
     interface = MyComputerInterface(program711, expected_machine_state, real_device=False)
-    interface.custom_command = translate_to_machine_instruction('RDV P1 0')
-    interface.full_cycle()
-    interface.custom_command = None
 
     app = QApplication(sys.argv)
     window = MainWindow(interface)
