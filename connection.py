@@ -362,6 +362,8 @@ class MyComputerInterface:
     def sleep(self):
         if self.real_device:
             time.sleep(self.MEMORY_DELAY)
+        elif self.verbose:
+            time.sleep(self.MEMORY_DELAY/10)
 
     def set_mem_bus_addr(self, value):
         vals = device_bus_addr[value]
@@ -377,7 +379,7 @@ class MyComputerInterface:
         self.set_mem_bus_addr(address)
         self.sleep()
         vals = [str(self.digital_in(1 + i)) for i in range(4)]
-        self.log(f'reading {"".join(vals)} from address = {address}')
+        # self.log(f'reading {"".join(vals)} from address = {address}')
         return (8 * int(vals[0])
                 + 4 * int(vals[1])
                 + 2 * int(vals[2])

@@ -1,7 +1,9 @@
+from time import sleep
+
 from connection import translate_to_machine_instruction, MyComputerInterface, ExpectedMachineState, bin_to_value
 from PyQt5.QtWidgets import QApplication, QWidget, QTabWidget, QGridLayout, QLabel, QPlainTextEdit, QFrame, QScrollArea, \
     QCheckBox
-from PyQt5.QtCore import Qt, QSize
+from PyQt5.QtCore import Qt, QSize, QObject, pyqtSignal, QThread
 import traceback
 
 import sys
@@ -13,6 +15,45 @@ from PyQt5.QtWidgets import (
     QVBoxLayout,
     QHBoxLayout
 )
+
+
+class Worker(QObject):
+    """ Worker to run program off main UI thread.
+    """
+    finished = pyqtSignal()
+    progress = pyqtSignal()
+    interface = None
+    state = None
+
+    def run(self):
+        try:
+            count = 0
+            while count < 100:
+                count += 1
+                self.interface.read_write_cycle()  # read instruction
+                if self.state.bus_from_device == [0, 0, 0, 0, 0, 0, 0, 0]:
+                    return
+                self.interface.toggle_clock()  # click 1
+                self.progress.emit()
+                self.interface.toggle_clock()  # to phase 2
+                self.interface.read_write_cycle()  # read immediate or *M
+                self.interface.toggle_clock()  # click 2
+                self.progress.emit()
+                self.interface.toggle_clock()  # to phase 3
+                self.interface.read_write_cycle()  # write to *M if required
+                self.interface.toggle_clock()  # click 3
+                self.progress.emit()
+                self.interface.toggle_clock()  # to phase 4
+
+                self.interface.toggle_clock()  # click 4
+                self.progress.emit()
+                self.interface.toggle_clock()  # to phase 0
+        except Exception as ex:
+            print(ex)
+            print(traceback.format_exc())
+        finally:
+            self.finished.emit()
+
 
 
 class MainWindow(QWidget):
@@ -36,12 +77,13 @@ class MainWindow(QWidget):
         self.tabs.addTab(self.tab_run, "Run")
 
         layout.addWidget(self.tabs)
+
         self.setLayout(layout)
         self.show()
 
 
 class RunTab(QWidget):
-    def __init__(self, parent, computer):
+    def __init__(self, parent, interface):
         super(QWidget, self).__init__(parent)
         self.layout = QVBoxLayout(self)
         self.setLayout(self.layout)
@@ -59,17 +101,18 @@ def txt(vals):
 
 
 class TestTab(QWidget):
-    def __init__(self, parent, computer:MyComputerInterface):
+    def __init__(self, parent, interface: MyComputerInterface):
         super(QWidget, self).__init__(parent)
-        self.computer = computer
-        self.state = self.computer.expected_machine_state
+        self.counter = 0
+        self.interface = interface
+        self.state = self.interface.expected_machine_state
         self.layout = QVBoxLayout()
         self.setLayout(self.layout)
 
         # Memory
 
         rows = []
-        for i, (m, rm) in enumerate(zip(self.computer.memory, self.computer.readable_memory)):
+        for i, (m, rm) in enumerate(zip(self.interface.memory, self.interface.readable_memory)):
             rows.append(f'{i*2:<5} {m:<20}  {rm}')
         self.mem = QPlainTextEdit('\n'.join(rows), readOnly=True)
         self.mem.setMinimumSize(QSize(600, 600))
@@ -117,9 +160,9 @@ class TestTab(QWidget):
         self.auto = QPushButton('AUTO')
         self.auto.clicked.connect(self.auto_clicked)
         row_clock.addWidget(self.auto)
-        self.test = QPushButton('Test')
-        self.test.clicked.connect(self.update_data)
-        row_clock.addWidget(self.test)
+        self.cancel = QPushButton('Cancel')
+        self.cancel.clicked.connect(self.cancel_clicked)
+        row_clock.addWidget(self.cancel)
         self.layout.addLayout(row_clock)
         row_rw = QHBoxLayout()
 
@@ -182,12 +225,13 @@ class TestTab(QWidget):
         self.writes_to_reg_bus = ['P1', 'M1', 'W', 'A', 'R']
         for name in ['N', 'T', 'P1', 'M1', 'W', 'A', 'R', 'TP1']:
             self.add_row(name)
+
         self.update_data()
 
     def command_changed(self):
         try:
             self.translated_command.setText(translate_to_machine_instruction(self.custom_command.text()))
-            self.computer.custom_command = self.translated_command.text()
+            self.interface.custom_command = self.translated_command.text()
         except Exception as ex:
             print(ex)
             print(traceback.format_exc())
@@ -197,7 +241,7 @@ class TestTab(QWidget):
             self.custom_command.setEnabled(True)
         else:
             self.custom_command.setEnabled(False)
-            self.computer.custom_command = None
+            self.interface.custom_command = None
 
     def add_row(self, name):
         row_n = QHBoxLayout()
@@ -223,10 +267,10 @@ class TestTab(QWidget):
 
     def update_data(self):
         rows = []
-        for i, (m, rm) in enumerate(zip(self.computer.memory, self.computer.readable_memory)):
+        for i, (m, rm) in enumerate(zip(self.interface.memory, self.interface.readable_memory)):
             rows.append(f'{i * 2:<5} {m:<20}  {rm}')
         self.mem.setPlainText('\n'.join(rows))
-        self.calc_address.setText(str(self.computer.calculated_address))
+        self.calc_address.setText(str(self.interface.calculated_address))
 
         # bus from device and clock
         self.bus_from_device.setText(txt(self.state.bus_from_device))
@@ -251,7 +295,7 @@ class TestTab(QWidget):
 
     def toggle_clicked(self):
         try:
-            self.computer.toggle_clock()
+            self.interface.toggle_clock()
             self.update_data()
         except Exception as ex:
             print(ex)
@@ -259,52 +303,56 @@ class TestTab(QWidget):
 
     def rw_clicked(self):
         try:
-            self.computer.read_write_cycle()
+            self.interface.read_write_cycle()
             self.update_data()
         except Exception as ex:
             print(ex)
             print(traceback.format_exc())
+
+    def disable(self):
+        self.toggle.setEnabled(False)
+        self.rw.setEnabled(False)
+        self.cycle.setEnabled(False)
+        self.auto.setEnabled(False)
+
+    def reenable(self):
+        self.toggle.setEnabled(True)
+        self.rw.setEnabled(True)
+        self.cycle.setEnabled(True)
+        self.auto.setEnabled(True)
+
+    def cancel_clicked(self):
+        pass
 
     def auto_clicked(self):
         """ Run until NOP encountered
-
         """
-        try:
-            count = 0
-            while count < 100:
-                count += 1
-                interface.read_write_cycle()  # read instruction
-                if self.state.bus_from_device == [0, 0, 0, 0, 0, 0, 0, 0]:
-                    return
-                interface.toggle_clock()  # click 1
-                self.update_data()
-                interface.toggle_clock()  # to phase 2
-                interface.read_write_cycle()  # read immediate or *M
-                interface.toggle_clock()  # click 2
-                self.update_data()
-                interface.toggle_clock()  # to phase 3
-                interface.read_write_cycle()  # write to *M if required
-                interface.toggle_clock()  # click 3
-                self.update_data()
-                interface.toggle_clock()  # to phase 4
+        self.thread = QThread()
+        self.worker = Worker()
+        self.worker.interface = self.interface
+        self.worker.state = self.state
+        self.worker.moveToThread(self.thread)
+        self.thread.started.connect(self.worker.run)
+        self.worker.finished.connect(self.thread.quit)
+        self.worker.finished.connect(self.worker.deleteLater)
+        self.thread.finished.connect(self.thread.deleteLater)
+        self.worker.progress.connect(self.update_data)
 
-                interface.toggle_clock()  # click 4
-                self.update_data()
-                interface.toggle_clock()  # to phase 0
-        except Exception as ex:
-            print(ex)
-            print(traceback.format_exc())
+        self.thread.start()
+
+        self.disable()
+        self.worker.finished.connect(self.reenable)
 
     def cycle_clicked(self):
         try:
-            interface.full_cycle(1)
+            self.interface.full_cycle(1)
             self.update_data()
         except Exception as ex:
             print(ex)
             print(traceback.format_exc())
 
 
-if __name__ == '__main__':
+def run():
     # 7x11
     program711 = ['RDV M1 40',  # Initialize
                   'RDV A 0',
@@ -312,8 +360,8 @@ if __name__ == '__main__':
                   'RDV M1 42',
                   'RDV A 2',
                   'WRT A',
-                  'RDV M1 40',   #addr 12 / start of loop / adds 11 to m40 / subtracts 1 from m42
-                  'RDV P1 16',   # manually bump to 16 (next) so that when P1 is set again it can be recognized
+                  'RDV M1 40',  # addr 12 / start of loop / adds 11 to m40 / subtracts 1 from m42
+                  'RDV P1 16',  # manually bump to 16 (next) so that when P1 is set again it can be recognized
                   'RDM A',
                   'ADV A 11',
                   'WRT R',
@@ -323,12 +371,18 @@ if __name__ == '__main__':
                   'WRT R',
                   'JMZ R 34',  # if m22 is zero then exit loop
                   'RDV P1 12',  # location 30
-                  'NOP'        # end of program
+                  'NOP'  # end of program
                   ]
-    program711 += ['0']*10
+    program711 += ['0'] * 10
     expected_machine_state = ExpectedMachineState()
-    interface = MyComputerInterface(program711, expected_machine_state, real_device=True)
+    # interface = MyComputerInterface(program711, expected_machine_state, real_device=True)
+    interface = MyComputerInterface(program711, expected_machine_state, real_device=False)
 
     app = QApplication(sys.argv)
     window = MainWindow(interface)
     sys.exit(app.exec())
+
+
+if __name__ == '__main__':
+    run()
+
