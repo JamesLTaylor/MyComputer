@@ -1,6 +1,6 @@
 from time import sleep
 
-from connection import translate_to_machine_instruction, MyComputerInterface, ExpectedMachineState, bin_to_value
+from connection import translate_to_machine_instruction, MyComputerInterface, ExpectedMachineState
 from PyQt5.QtWidgets import QApplication, QWidget, QTabWidget, QGridLayout, QLabel, QPlainTextEdit, QFrame, QScrollArea, \
     QCheckBox
 from PyQt5.QtCore import Qt, QSize, QObject, pyqtSignal, QThread
@@ -15,6 +15,8 @@ from PyQt5.QtWidgets import (
     QVBoxLayout,
     QHBoxLayout
 )
+
+from utils import bin_to_value
 
 
 class Worker(QObject):
@@ -223,7 +225,7 @@ class TestTab(QWidget):
 
         self.rows = {}
         self.writes_to_reg_bus = ['P1', 'M1', 'W', 'A', 'R']
-        for name in ['N', 'T', 'P1', 'M1', 'W', 'A', 'R', 'TP1']:
+        for name in ['N', 'T', 'P1', 'M1', 'W', 'A', 'R', 'TP1', 'TM1']:
             self.add_row(name)
 
         self.update_data()
@@ -377,6 +379,9 @@ def run():
     expected_machine_state = ExpectedMachineState()
     # interface = MyComputerInterface(program711, expected_machine_state, real_device=True)
     interface = MyComputerInterface(program711, expected_machine_state, real_device=False)
+    interface.custom_command = translate_to_machine_instruction('RDV P1 0')
+    interface.full_cycle()
+    interface.custom_command = None
 
     app = QApplication(sys.argv)
     window = MainWindow(interface)
