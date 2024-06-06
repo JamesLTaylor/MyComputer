@@ -16,7 +16,7 @@ class MyComputerInterface:
     writes 8 bits out on 6, 7
 
     """
-    MEMORY_DELAY = 0.3
+    MEMORY_DELAY = 0.25
 
     def __init__(self, program, expected_machine_state: ExpectedMachineState, verbose=True, real_device=False):
         if real_device:
@@ -164,7 +164,6 @@ class MyComputerInterface:
             else:
                 self.memory[ind] = self.memory[ind][:9] + bin_fixed_width(value)
                 self.readable_memory[ind] = parts[0] + ' ' + str(value)
-
 
     def digital_on(self, pos):
         self.device.digital_on(pos)

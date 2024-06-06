@@ -1,4 +1,5 @@
-from connection import MyComputerInterface, ExpectedMachineState, bin_to_value, translate_to_machine_instruction
+from connection import MyComputerInterface, ExpectedMachineState, translate_to_machine_instruction
+from utils import bin_to_value
 
 
 def test_rdv_to_any():

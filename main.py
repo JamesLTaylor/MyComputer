@@ -360,11 +360,11 @@ def run():
                   'RDV A 0',
                   'WRT A',
                   'RDV M1 42',
-                  'RDV A 2',
+                  'RDV A 3',
                   'WRT A',
                   'RDV M1 40',  # addr 12 / start of loop / adds 11 to m40 / subtracts 1 from m42
                   'RDM A',
-                  'ADV A 11',
+                  'ADV A 40',
                   'WRT R',
                   'RDV M1 42',  # Subtract 1 from m22
                   'RDM A',
@@ -376,8 +376,8 @@ def run():
                   ]
     program711 += ['0'] * 10
     expected_machine_state = ExpectedMachineState()
-    # interface = MyComputerInterface(program711, expected_machine_state, real_device=True)
-    interface = MyComputerInterface(program711, expected_machine_state, real_device=False)
+    interface = MyComputerInterface(program711, expected_machine_state, real_device=True)
+    # interface = MyComputerInterface(program711, expected_machine_state, real_device=False)
 
     app = QApplication(sys.argv)
     window = MainWindow(interface)
