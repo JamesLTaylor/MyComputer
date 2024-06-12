@@ -28,7 +28,7 @@ def compile(program):
             variables[name.strip()] = (length, values)
             insert_rows[address].append(full_line)
         elif line[0] == ':':
-            labels[line[1:]] = address
+            labels[line[1:]] = address + 1
             insert_rows[address].append(full_line)
         else:
             readable.append(full_line)

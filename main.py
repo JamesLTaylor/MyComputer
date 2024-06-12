@@ -30,7 +30,7 @@ class Worker(QObject):
     def run(self):
         try:
             count = 0
-            while count < 100:
+            while count < 1000:
                 count += 1
                 self.interface.read_write_cycle()  # read instruction
                 if self.state.bus_from_device == [0, 0, 0, 0, 0, 0, 0, 0]:
@@ -270,8 +270,9 @@ class TestTab(QWidget):
     def update_data(self):
         rows = []
         for i, (m, rm) in enumerate(zip(self.interface.memory, self.interface.readable_memory)):
+            prefix = '>> ' if i == self.interface.current_address // 2 else ''
             rows = rows + self.interface.insert_rows.get(i*2, [])
-            rows.append(f'{i * 2:<5} {m:<20}  {rm}')
+            rows.append(f'{prefix}{i * 2:<5} {m:<20}  {rm}')
         self.mem.setPlainText('\n'.join(rows))
         self.curr_address.setText(str(self.interface.current_address))
 
@@ -363,8 +364,8 @@ def run():
     with open(f'./progs/{prog_name}') as f:
         program = f.readlines()
     expected_machine_state = ExpectedMachineState()
-    # interface = MyComputerInterface(program, expected_machine_state, real_device=True)
-    interface = MyComputerInterface(program, expected_machine_state, real_device=False)
+    interface = MyComputerInterface(program, expected_machine_state, real_device=True)
+    # interface = MyComputerInterface(program, expected_machine_state, real_device=False)
 
     app = QApplication(sys.argv)
     window = MainWindow(interface)
