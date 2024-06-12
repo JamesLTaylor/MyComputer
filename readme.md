@@ -4,6 +4,8 @@ This is a python application to support a simple 8-bit computer that I am buildi
 an old Velleman K8055 kit plays the role of a clock pulse and the main RAM of the computer. All
 the other logic is implemented in the electronics on the breadboards.
 
+![20240606_220333.jpg](images%2F20240606_220333.jpg)
+
 ## Wrapping DLL
 This uses a Python module created By Fergus Leahy a.k.a. Fergul Magurgul
 (https://sourceforge.net/projects/pyk8055/)
@@ -16,7 +18,7 @@ The K8055 dll is 32bit so you need a 32bit python to run this.
 
 Acts as the main memory of the computer and the clock.
 The basic cycle is:
- * read contents of address bus (16bits)
+ * read contents of address bus (8bits) ()
  * read R/W bit
  * if read, get contents at address and put them on the data bus
  * if write, take contents on data bus and write them to the memory 
@@ -32,8 +34,9 @@ The basic cycle is:
 
 8 blocks of 4 bits each, numbered 0-7
 
- * 0, 1, 2, 3 = 16 bits of address
- * 4, 5 = 8 bits of data from memory
+ * 0, 1 = 8 bits of address/data
+ * *2, 3 = future extra 8 bits of address.* 
+ * 4, 5 = 8 bits of address used during phase 2 write
  * 6, 7 = 8 bits of data from MyComputer
 
 ## Cycle
@@ -45,9 +48,9 @@ The basic cycle is:
  * click to 1 (writes to W & T)
  * click to 0 (moves to phase 2)
  * calculations take place in this phase
- * click to 1 (write result of calculations)
+ * click to 1 (write result of calculations to registers/memory)
  * click to 0 (moves to phase 3)
- * click to 1 (*future* write incremented program counter)
+ * click to 1 (write incremented program counter if not written in phase 2)
  * click to 0 (moves to phase 0)
  
 ## Wiring status
