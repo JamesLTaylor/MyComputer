@@ -1,5 +1,6 @@
 import copy
 
+import compiler
 import pyk8055
 import time
 
@@ -16,7 +17,7 @@ class MyComputerInterface:
     writes 8 bits out on 6, 7
 
     """
-    MEMORY_DELAY = 0.25
+    MEMORY_DELAY = 0.3
 
     def __init__(self, program, expected_machine_state: ExpectedMachineState, verbose=True, real_device=False):
         if real_device:
@@ -24,8 +25,7 @@ class MyComputerInterface:
         else:
             self.real_device = None
         self.device = DummyDevice(expected_machine_state)
-        self.readable_memory = program
-        self.memory = [translate_to_machine_instruction(line) for line in program]
+        self.memory, self.readable_memory, self.insert_rows = compiler.compile(program)
         self.expected_machine_state = expected_machine_state
         self.verbose = verbose
         self.clock = 0
@@ -61,11 +61,12 @@ class MyComputerInterface:
         self.set_mem_bus_addr(address)
         self.sleep()
         vals = [str(self.digital_in(1 + i)) for i in range(4)]
-        # self.log(f'reading {"".join(vals)} from address = {address}')
-        return (8 * int(vals[0])
+        value =  (8 * int(vals[0])
                 + 4 * int(vals[1])
                 + 2 * int(vals[2])
                 + 1 * int(vals[3]))
+        # self.log(f'reading {"".join(vals)} ({value}) from address = {address}')
+        return value
 
     def write_to_bus(self, address, vals):
         # self.log(f'writing {"".join(vals)} to address = {address}')
@@ -156,11 +157,13 @@ class MyComputerInterface:
             value = self.get8bit(0, 1)
             self.log(f'writing {value} to {address}')
             ind, offset = self._ind_and_offset(address)
-            parts = self.readable_memory[ind].split()
+            content_parts = self.readable_memory[ind].split('#')
+            comment = '# ' + content_parts[1] if len(content_parts) > 1 else ''
+            parts = content_parts[0].split()
             parts = parts + ['0'] * (2-len(parts))
             if offset == 0:
                 self.memory[ind] = bin_fixed_width(value) + self.memory[ind][8:]
-                self.readable_memory[ind] = str(value) + ' ' + parts[1]
+                self.readable_memory[ind] = str(value) + ' ' + parts[1] + comment
             else:
                 self.memory[ind] = self.memory[ind][:9] + bin_fixed_width(value)
                 self.readable_memory[ind] = parts[0] + ' ' + str(value)

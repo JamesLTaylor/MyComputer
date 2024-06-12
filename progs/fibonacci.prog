@@ -1,0 +1,48 @@
+*counter = 5
+*working1 = 0
+*working2 = 0
+*next_value = 0
+*pos = 2  # last value written to results (steps of 2)
+*results = [1,1,0,0,0,0,0]
+
+:START
+
+# copy last value written to working1
+RDV A results
+RDV M1 pos
+ADM A       # Add &pos to &results
+CPY R M1
+RDM A
+RDV M1 working1
+WRT A
+
+# Add second last value written to working1
+RDV A results
+RDV M1 pos
+ADM A              # Add &pos to &results
+CPY R A
+ADV A -2
+CPY R M1           # now pointing to 2nd last written value
+RDV A
+RDV M1 working1
+ADM A              # A now has next value
+RDV M1 next_value
+WRT A
+
+# increment pos
+RDV M1 pos
+RDM A
+ADV A 2
+WRT pos
+
+# write next value into list
+RDV A results
+RDV M1 pos
+ADM A               # A now has address to write next value
+CPY A R
+RDV M1 next_value
+RDM A
+CPY R M1
+WRT A
+
+NOP

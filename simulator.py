@@ -115,7 +115,7 @@ class ExpectedMachineState:
 
     def write(self):
         # This will write on WRT and RDM, but that is OK since RDM will rewrite the same value.
-        return self.r['N'][2] and not self.r['N'][4]
+        return self.r['N'][2] and not self.r['N'][4]# and not self.r['N'][3]
 
     def get(self, line):
         if line == 5:

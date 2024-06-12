@@ -1,0 +1,17 @@
+RDV M1 40    # Initialize
+RDV A 0
+WRT A
+RDV M1 42
+RDV A 3
+WRT A
+RDV M1 40    # addr 12 / start of loop / adds 11 to m40 / subtracts 1 from m42
+RDM A
+ADV A 37
+WRT R
+RDV M1 42    # Subtract 1 from m22
+RDM A
+ADV A -1
+WRT R
+JMZ R 34     # if m22 is zero then exit loop
+RDV P1 13    # jump to start of loop
+NOP          # end of program

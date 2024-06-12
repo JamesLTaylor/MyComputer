@@ -78,17 +78,18 @@ Flags control which register is enabled to so that its contents are presented to
 | R    | Only for RDV, CPY. need for ADV |        |
  
 ### Instructions
-| Name | Binary | Wired | Comment       | 
-|------|--------|-------|---------------|
-| RDV  | 00111  | Yes   |               |
-| CPY  | 00101  | Yes   |               |
-| WRT  | 00100  | Yes   |               |
-| RDM  | 00110  | Yes   |               |
-| ADV  | 01001  |       |               |
-| ADM  | 01000  |       |               |
-| JMZ  | 10001  |       |               |
-| ---  |        | ---   | ---           |
-| PAG  | 11001  |       | Page M1 or P1 |
+| Name  | Binary  | Wired         | Comment         | 
+|-------|---------|---------------|-----------------|
+| RDV   | 00111   | Yes           |                 |
+| CPY   | 00101   | Yes           |                 |
+| WRT   | 00100   | Yes           |                 |
+| RDM   | 00110   | Yes           |                 |
+| ADV   | 01001   | without carry |                 |
+| ADM   | 01000   | No            |                 |
+| JMZ   | 10001   | Yes           |                 |
+| NEG   | 11001   | No            | Write -SRC to R |
+
+
 
 Instruction bits are n0 n1 n2 n3 n4.
 
@@ -108,5 +109,12 @@ Instruction bits are n0 n1 n2 n3 n4.
 | 6     | 110     | A        |
 | 7     | 111     | R        |
 
+## TODO
 
+ * Only write for 00100
+ * Add NEG
+ * Add M0, P0
+ * Store carry for ADV (allow >8 bit add)
+ * Store carry for NEG (to allow >8 bit neg)
+ * RDV A 0; ADV A 0; should put carry in R to allow jump on <>
 

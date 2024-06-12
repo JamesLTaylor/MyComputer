@@ -270,6 +270,7 @@ class TestTab(QWidget):
     def update_data(self):
         rows = []
         for i, (m, rm) in enumerate(zip(self.interface.memory, self.interface.readable_memory)):
+            rows = rows + self.interface.insert_rows.get(i*2, [])
             rows.append(f'{i * 2:<5} {m:<20}  {rm}')
         self.mem.setPlainText('\n'.join(rows))
         self.curr_address.setText(str(self.interface.current_address))
@@ -356,28 +357,14 @@ class TestTab(QWidget):
 
 def run():
     # 7x11
-    program711 = ['RDV M1 40',  # Initialize
-                  'RDV A 0',
-                  'WRT A',
-                  'RDV M1 42',
-                  'RDV A 3',
-                  'WRT A',
-                  'RDV M1 40',  # addr 12 / start of loop / adds 11 to m40 / subtracts 1 from m42
-                  'RDM A',
-                  'ADV A 40',
-                  'WRT R',
-                  'RDV M1 42',  # Subtract 1 from m22
-                  'RDM A',
-                  'ADV A -1',
-                  'WRT R',
-                  'JMZ R 34',  # if m22 is zero then exit loop
-                  'RDV P1 13',  # jump to start of loop
-                  'NOP'  # end of program
-                  ]
-    program711 += ['0'] * 10
+    # prog_name = 'mult.prog'
+    # prog_name = 'read_write_a.prog'
+    prog_name = 'fibonacci.prog'
+    with open(f'./progs/{prog_name}') as f:
+        program = f.readlines()
     expected_machine_state = ExpectedMachineState()
-    interface = MyComputerInterface(program711, expected_machine_state, real_device=True)
-    # interface = MyComputerInterface(program711, expected_machine_state, real_device=False)
+    # interface = MyComputerInterface(program, expected_machine_state, real_device=True)
+    interface = MyComputerInterface(program, expected_machine_state, real_device=False)
 
     app = QApplication(sys.argv)
     window = MainWindow(interface)
