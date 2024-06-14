@@ -1,0 +1,21 @@
+*temp = 0
+*pos = 10  # length of list, will iterate down to 0
+*values = [1270, 1389, 501, 447, 730, 1311, 1803, 1262, 221, 1809]
+
+RDV A 0
+NEG A       # clear carry bit from NEG
+RDV M1 b.0
+RDM A       # A has low bits of b
+NEG A
+RDV M1 neg_b.0
+WRT R
+RDV M1 b.1
+RDM A       # A has high bits of b
+NEG A
+RDV M1 neg_b.1
+WRT R
+
+# Add a to -b
+ADV A 0    # clear ADD carry bit
+RDV M1 a.0
+RDM A
