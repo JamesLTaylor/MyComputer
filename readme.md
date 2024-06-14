@@ -116,8 +116,18 @@ Instruction bits are n0 n1 n2 n3 n4.
 
  * Only write for 00100
  * Add NEG
- * Add M0, P0
+ * Add M0, P0 - they are always targets so can avoid some logic. (they have to be because their output is always to the
+                connection bus)
  * Store carry for ADV (allow >8 bit add)
  * Store carry for NEG (to allow >8 bit neg)
  * RDV A 0; ADV A 0; should put carry in R to allow jump on <>
+ * Have special addresses for "screen" output
+
+## Test Programs
+
+1. Add 16 bit numbers
+2. Subtract 16 bit numbers
+3. Find the largest number in list
+4. Sort a list
+5. Find the largest number in a list that is longer than 128 numbers 
 

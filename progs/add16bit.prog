@@ -1,0 +1,19 @@
+*a = 255
+*b = 3456
+*result = 0
+
+RDV M1 a.0
+RDM A   # A has low bits of a
+RDV M1 b.0
+ADM A   # result of low bits is in R, and carry has been set
+RDV M1 result.0
+WRT R
+
+RDV M1 a.1
+RDM A
+RDV M1 b.1
+ADM A   # result of high bits is in R, and carry has been set
+RDV M1 result.1
+WRT R
+
+NOP

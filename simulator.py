@@ -33,15 +33,23 @@ class ExpectedMachineState:
         self.bus_from_device = [0 for _ in range(8)]  # includes lines and a 4bit reg
 
         # "computer"
-        self.r = {'N': [0 for _ in range(8)], 'T': [0 for _ in range(8)], 'P1': [0 for _ in range(8)],
-                  'M1': [0 for _ in range(8)], 'A': [0 for _ in range(8)], 'R': [0 for _ in range(8)],
-                  'W': [0 for _ in range(8)], 'TP1': [0 for _ in range(8)], 'TM1': [0 for _ in range(8)]}
+        self.r = {'N': [0 for _ in range(8)],
+                  'T': [0 for _ in range(8)],
+                  'P1': [0 for _ in range(8)],
+                  'M1': [0 for _ in range(8)],
+                  'A': [0 for _ in range(8)],
+                  'R': [0 for _ in range(8)],
+                  'W': [0 for _ in range(8)],
+                  'TP1': [0 for _ in range(8)],    # temp result of P1 + 2, to be copied to P1 in phase 3
+                  'TM1': [0 for _ in range(8)],    # temp copy of bus_from_regs in phase 1, which is M1 in a write
+                  'P0': [0 for _ in range(8)],     # high bits of instruction pointer, can be written to but not read
+                  'M0': [0 for _ in range(8)],     # high bits of data pointer, can be written to but not read
+                  }
+        self.jk = {'Carry': 0,
+                   'Cmp': 0}
         self.f = [1, 0, 0, 0]
         self.nf = [0, 1, 1, 1]
         self.clock = 0
-
-        self.cmp = 1
-        self.carry = 0
 
     def bus_addr(self):
         addr = ''.join([str(self.lines_in[i]) for i in [1, 2, 3]])
@@ -113,9 +121,22 @@ class ExpectedMachineState:
         else:
             return self._tgt_t()
 
+    def instruction(self):
+        """ n0, n1, n2 are coded into instructions
+        000 = NOP
+        001 = CPY etc
+        010 = ADV
+        100 = JMZ
+        110 = NEG
+        """
+        val = [0, 0, 0, 0, 0, 0, 0, 0]
+        ind = 4 * self.r['N'][0] + 2 * self.r['N'][1] + self.r['N'][2]
+        val[ind] = 1
+        return val
+
     def write(self):
         # This will write on WRT and RDM, but that is OK since RDM will rewrite the same value.
-        return self.r['N'][2] and not self.r['N'][4]# and not self.r['N'][3]
+        return self.instruction()[1] and not self.r['N'][4] and not self.r['N'][3]
 
     def get(self, line):
         if line == 5:
@@ -152,67 +173,93 @@ class ExpectedMachineState:
         flag['A'] = n_read_source or self.src()[6]
         # f2 and (n2 and n3)
         # negated: f2' or (n2 nand n3)
-        flag['W'] = self.nf[2] or (not (self.r['N'][2] and self.r['N'][3]))
+        flag['W'] = self.nf[2] or (not (self.instruction()[1] and self.r['N'][3]))
         # f2 and src[7]
         flag['R'] = n_read_source or self.src()[7]
         return flag
 
     def bus_from_registers(self):
+        """ Only some registers can be read from
+
+        """
         flag = self.flags()
         for key in ['P1', 'M1', 'W', 'A', 'R']:
             if not flag[key]:
                 return self.r[key]
 
+    def cmp(self):
+        """ Wire from compare. In phase 2 checks if bus_from_regs is zero - if it is then T will be put on
+        bus_to_regs and TP1 will not be written in phase 3.
+
+        Only defined in phase 2 for instruction 4.
+
+        One means the test value is zero and the instruction 4 is running.
+        """
+        a = bin_to_value(self.bus_from_registers())
+        return self.instruction()[4] and a == 0
+
+    def carry(self):
+        """ Wire from add
+        """
+        if self.f[2] and self.instruction()[2]:  # ADV
+            a = bin_to_value(self.bus_from_registers())
+            b = bin_to_value(self.r['T'])
+            res = a + b
+            return res > 255
+
     def bus_to_registers(self):
-        '''
+        """
         logic of computer
-        '''
+        """
         if self.f[0]:
             return self.bus_from_device
         if self.f[1]:
             return self.bus_from_device
-        if self.f[2] and self.r['N'][2]:  # CPY
+        if self.f[2] and self.instruction()[1]:  # CPY
             return self.bus_from_registers()
-        if self.f[2] and self.r['N'][1]:  # ADV
+        if self.f[2] and self.instruction()[2]:  # ADV
             a = bin_to_value(self.bus_from_registers())
             b = bin_to_value(self.r['T'])
-            res = a + b
+            res = a + b + self.jk['Carry']
             if res > 255:
-                self.carry = 1
                 res = res - 256
             return [int(i) for i in bin_fixed_width(res)]
-        if self.f[2] and self.r['N'][0]:  # JMZ
+        if self.f[2] and self.instruction()[4]:  # JMZ
             a = bin_to_value(self.bus_from_registers())
-            self.cmp = a != 0
-            # 0 when it should expose this: (n0 nand f2) or cmp
-            if not self.cmp:
+            if a == 0:
                 return copy.copy(self.r['T'])
             else:
                 return None
+        if self.f[2] and self.instruction()[6]:  # NEG
+            raise Exception('Not implemented')
         if self.f[3]:
             return copy.copy(self.r['TP1'])
 
     def clicks(self):
         click = {}
-        n = self.r['N']
         click['N'] = self.f[0]
         click['T'] = self.f[1]
         click['W'] = self.f[1]
         # write in phase 2 for RDV, CPY, RDM - not WRT
-        write_target = (self.r['N'][2] and (self.r['N'][3] or self.r['N'][4]))
-        cmp_tmp = (not self.cmp) and n[0]
+        write_target = (self.instruction()[1] and (self.r['N'][3] or self.r['N'][4]))
         p1_wrt_tmp = not self.tgt()[1] and write_target
         click['P1'] = (self.f[2] and p1_wrt_tmp
-                       or (self.f[2] and cmp_tmp)
-                       or (self.f[3] and not cmp_tmp and not p1_wrt_tmp)  # this will pick up the program counter
+                       or (self.f[2] and self.cmp())
+                       or (self.f[3] and not self.jk['Cmp'] and not p1_wrt_tmp)  # this will pick up the program counter
                        )
         click['M1'] = self.f[2] and not self.tgt()[3] and write_target
         click['A'] = self.f[2] and not self.tgt()[6] and write_target
+        click['M0'] = self.f[2] and not self.tgt()[2] and write_target
+        click['P0'] = self.f[2] and not self.tgt()[0] and write_target
         # write to R for n1 (add) or n2 (cpy) and target is R
-        click['R'] = (self.f[2] and (not self.tgt()[7] and write_target)) or (self.f[2] and self.r['N'][1])
-        # Write incremented pointer if
+        click['R'] = ((self.f[2] and (not self.tgt()[7] and write_target))
+                      or (self.f[2] and self.r['N'][1])  # NB. still use n1 here instead of instructions, assuming all
+                                                         # n1=1 instructions must write to R
+                      )
         click['TP1'] = self.f[0]
-        click['TM1'] = self.f[1] # Take copy of Mem pointer in phase 2 for use in writing.
+        click['TM1'] = self.f[1]  # Take copy of Mem pointer in phase 2 for use in writing.
+        click['Carry'] = self.f[2] and self.instruction()[2]
+        click['Cmp'] = self.f[2] and self.instruction()[4]
         return click
 
     def reg_write(self):
@@ -232,6 +279,10 @@ class ExpectedMachineState:
             self.r['TP1'] = [int(i) for i in bin_fixed_width(res)]
         if click['TM1']:
             self.r['TM1'] = copy.copy(self.bus_from_registers())
+        if click['Carry']:
+            self.jk['Carry'] = self.carry()
+        if click['Cmp']:
+            self.jk['Cmp'] = self.cmp()
         for key in ['P1', 'M1', 'W', 'A', 'R']:
             if click[key]:
                 self.r[key] = bus_value

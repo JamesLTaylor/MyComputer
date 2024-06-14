@@ -48,6 +48,14 @@ def bin_to_value(vals):
     return value
 
 
+def neg(bits, carry):
+    result = [0] * len(bits)
+    for i in range(len(bits)-1, -1, -1):
+        result[i] = int(bits[i]) ^ carry
+        carry = carry * int(bits[i])
+    return result, carry
+
+
 def translate_to_readable(val1, val2):
     """ Returns list of Instruction, value pair, single value
     """

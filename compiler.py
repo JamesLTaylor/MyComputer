@@ -46,9 +46,15 @@ def compile(program):
             asm[address//2 + i] = str(v)
             readable[address//2 + i] = f'{v} # {name}'
 
+    # replace variables and labels with their memory values
     for line in asm:
         for name, (address, value) in variables.items():
             if name in line:
+                if '.0' in line:
+                    line = line.replace('.0', '')
+                elif '.1' in line:
+                    address += 1
+                    line = line.replace('.1', '')
                 line = line.replace(name, str(address))
         for name, address in labels.items():
             if name in line:
