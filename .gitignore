@@ -1,3 +1,4 @@
 /unused
 /.idea
 /__pycache__
+*.pyc
