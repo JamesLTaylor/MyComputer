@@ -48,14 +48,16 @@ def compile(program):
 
     # replace variables and labels with their memory values
     for line in asm:
+        parts = line.split()
         for name, (address, value) in variables.items():
-            if name in line:
-                if '.0' in line:
-                    line = line.replace('.0', '')
-                elif '.1' in line:
-                    address += 1
-                    line = line.replace('.1', '')
+            if name+'.0' in parts:
+                line = line.replace(f'{name}.0', str(address))
+            elif name + '.1' in parts:
+                address += 1
+                line = line.replace(f'{name}.1', str(address))
+            elif name in parts:
                 line = line.replace(name, str(address))
+
         for name, address in labels.items():
             if name in line:
                 line = line.replace(name, str(address))

@@ -5,7 +5,8 @@ instructions = {'NOP': '00000',
                 'RDM': '00110',
                 'ADV': '01001',
                 'ADM': '01000',
-                'JMZ': '10001'}
+                'JMZ': '10001',
+                'NEG': '11001'}
 instructions_inv = {v: k for k, v in instructions.items()}
 registers = {'P0': '000',
              'P1': '001',
@@ -52,7 +53,7 @@ def neg(bits, carry):
     result = [0] * len(bits)
     for i in range(len(bits)-1, -1, -1):
         result[i] = int(bits[i]) ^ carry
-        carry = carry * int(bits[i])
+        carry = carry or int(bits[i])
     return result, carry
 
 

@@ -81,16 +81,16 @@ Flags control which register is enabled to so that its contents are presented to
 | R    | Only for RDV, CPY. need for ADV |        |
  
 ### Instructions
-| Name  | Binary  | Wired         | Comment         | 
-|-------|---------|---------------|-----------------|
-| RDV   | 00111   | Yes           |                 |
-| CPY   | 00101   | Yes           |                 |
-| WRT   | 00100   | Yes           |                 |
-| RDM   | 00110   | Yes           |                 |
-| ADV   | 01001   | without carry |                 |
-| ADM   | 01000   | No            |                 |
-| JMZ   | 10001   | Yes           |                 |
-| NEG   | 11001   | No            | Write -SRC to R |
+| Name | Binary | Wired         | Comment         | 
+|------|--------|---------------|-----------------|
+| RDV  | 00111  | Yes           |                 |
+| CPY  | 00101  | Yes           |                 |
+| WRT  | 00100  | Yes           |                 |
+| RDM  | 00110  | Yes           |                 |
+| ADV  | 01001  | without carry |                 |
+| ADM  | 01000  | without carry |                 |
+| JMZ  | 10001  | Yes           |                 |
+| NEG  | 11001  | No            | Write -SRC to R |
 
 
 
@@ -129,5 +129,9 @@ Instruction bits are n0 n1 n2 n3 n4.
 2. Subtract 16 bit numbers
 3. Find the largest number in list
 4. Sort a list
-5. Find the largest number in a list that is longer than 128 numbers 
+5. Find the largest number in a list that is longer than 128 numbers
+
+## Worries
+Carry is used and written by ADD in phase 2. Somehow I should write to temp in phase 2, and store it for later 
+use in phase 3
 

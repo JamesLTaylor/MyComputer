@@ -1,6 +1,6 @@
 import copy
 
-from utils import device_bus_addr_inv, bin_to_value, bin_fixed_width
+from utils import device_bus_addr_inv, bin_to_value, bin_fixed_width, neg
 
 
 class DummyDevice:
@@ -46,7 +46,8 @@ class ExpectedMachineState:
                   'M0': [0 for _ in range(8)],     # high bits of data pointer, can be written to but not read
                   }
         self.jk = {'Carry': 0,
-                   'Cmp': 0}
+                   'Cmp': 0,
+                   'NegCarry': 0}
         self.f = [1, 0, 0, 0]
         self.nf = [0, 1, 1, 1]
         self.clock = 0
@@ -196,7 +197,7 @@ class ExpectedMachineState:
         One means the test value is zero and the instruction 4 is running.
         """
         a = bin_to_value(self.bus_from_registers())
-        return self.instruction()[4] and a == 0
+        return a == 0  # On device this is: not (v0+v1+v2+...)
 
     def carry(self):
         """ Wire from add
@@ -204,8 +205,14 @@ class ExpectedMachineState:
         if self.f[2] and self.instruction()[2]:  # ADV
             a = bin_to_value(self.bus_from_registers())
             b = bin_to_value(self.r['T'])
-            res = a + b
+            res = a + b + self.jk['Carry']
             return res > 255
+
+    def neg_carry(self):
+        if self.f[2] and self.instruction()[6]:  # NEG
+            result, carry = neg(self.bus_from_registers(), self.jk['NegCarry'])
+            return carry
+
 
     def bus_to_registers(self):
         """
@@ -231,7 +238,8 @@ class ExpectedMachineState:
             else:
                 return None
         if self.f[2] and self.instruction()[6]:  # NEG
-            raise Exception('Not implemented')
+            result, carry = neg(self.bus_from_registers(), self.jk['NegCarry'])
+            return result
         if self.f[3]:
             return copy.copy(self.r['TP1'])
 
@@ -245,7 +253,7 @@ class ExpectedMachineState:
         p1_wrt_tmp = not self.tgt()[1] and write_target
         click['P1'] = (self.f[2] and p1_wrt_tmp
                        or (self.f[2] and self.cmp())
-                       or (self.f[3] and not self.jk['Cmp'] and not p1_wrt_tmp)  # this will pick up the program counter
+                       or (self.f[3] and not (self.instruction()[4] and self.jk['Cmp']) and not p1_wrt_tmp)  # this will pick up the program counter
                        )
         click['M1'] = self.f[2] and not self.tgt()[3] and write_target
         click['A'] = self.f[2] and not self.tgt()[6] and write_target
@@ -259,6 +267,7 @@ class ExpectedMachineState:
         click['TP1'] = self.f[0]
         click['TM1'] = self.f[1]  # Take copy of Mem pointer in phase 2 for use in writing.
         click['Carry'] = self.f[2] and self.instruction()[2]
+        click['NegCarry'] = self.f[2] and self.instruction()[6]
         click['Cmp'] = self.f[2] and self.instruction()[4]
         return click
 
@@ -280,7 +289,9 @@ class ExpectedMachineState:
         if click['TM1']:
             self.r['TM1'] = copy.copy(self.bus_from_registers())
         if click['Carry']:
-            self.jk['Carry'] = self.carry()
+            self.jk['Carry'] = self.carry()  # PROBLEM - carry() uses self.jk['Carry']
+        if click['NegCarry']:
+            self.jk['NegCarry'] = self.neg_carry()
         if click['Cmp']:
             self.jk['Cmp'] = self.cmp()
         for key in ['P1', 'M1', 'W', 'A', 'R']:
