@@ -59,7 +59,7 @@ def compile(program):
                 line = line.replace(name, str(address))
 
         for name, address in labels.items():
-            if name in line:
+            if name in parts:
                 line = line.replace(name, str(address))
         machine_ready.append(translate_to_machine_instruction(line))
 

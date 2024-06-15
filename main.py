@@ -362,7 +362,8 @@ def run():
     # prog_name = 'read_write_a.prog'
     # prog_name = 'fibonacci.prog'
     # prog_name = 'add16bit.prog'
-    prog_name = 'subtract16bit.prog'
+    # prog_name = 'subtract16bit.prog'
+    prog_name = 'find_largest.prog'
     with open(f'./progs/{prog_name}') as f:
         program = f.readlines()
     expected_machine_state = ExpectedMachineState()
