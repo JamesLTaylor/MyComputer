@@ -1,0 +1,11 @@
+*result = 10
+RDV A 0
+JMZ A ZERO
+RDV A 10
+RDV P1 END
+:ZERO
+RDV A 20
+:END
+RDV M1 result
+WRT A
+NOP
