@@ -50,6 +50,12 @@ def bin_to_value(vals):
 
 
 def neg(bits, carry):
+    """
+
+    :param bits:
+    :param carry:
+    :return: result (8bits) and carry (1bit). All inputs other than zero produce a carry out.
+    """
     result = [0] * len(bits)
     for i in range(len(bits)-1, -1, -1):
         result[i] = int(bits[i]) ^ carry

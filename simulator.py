@@ -213,7 +213,7 @@ class ExpectedMachineState:
 
     def neg_carry(self):
         if self.f[2] and self.instruction()[6]:  # NEG
-            result, carry = neg(self.bus_from_registers(), self.data['NegCarry'])
+            result, carry = neg(self.bus_from_registers(), self.data['NegCarry'] and self.r['T'][7])
             return carry
 
 
@@ -241,7 +241,7 @@ class ExpectedMachineState:
             else:
                 return None
         if self.f[2] and self.instruction()[6]:  # NEG
-            result, carry = neg(self.bus_from_registers(), self.data['NegCarry'])
+            result, carry = neg(self.bus_from_registers(), self.data['NegCarry'] and self.r['T'][7])
             return result
         if self.f[3]:
             return copy.copy(self.r['TP1'])

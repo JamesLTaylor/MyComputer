@@ -1,12 +1,10 @@
 *a = 20000
-*b = 20000
+*b = 10000
 *neg_b = 0
 *is_neg_result = 0
 *result = 0
 
 # Negate b
-RDV A 0
-NEG A       # clear carry bit from NEG
 RDV M1 b.0
 RDM A       # A has low bits of b
 NEG A
@@ -14,7 +12,7 @@ RDV M1 neg_b.0
 WRT R
 RDV M1 b.1
 RDM A       # A has high bits of b
-NEG A
+NEG A 1
 RDV M1 neg_b.1
 WRT R
 
@@ -40,7 +38,7 @@ ADV A 0
 JMZ R NOCARRY  # jump if there is no carry. i.e. the result is negative
 RDV A 78
 RDV M1 is_neg_result
-WRT A      # Write a 89(Y) to is_neg_result if there is a carrt otherwise 78(N)
+WRT A      # Write a 89(Y) to is_neg_result if there is a carry otherwise 78(N)
 RDV P1 END
 
 :NOCARRY

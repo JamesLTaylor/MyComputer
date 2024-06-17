@@ -189,7 +189,7 @@ class MyComputerInterface:
     def toggle_clock(self):
         # Get address from computer via device
         if self.real_device:
-            time.sleep(0.1)
+            time.sleep(0.2)
         if self.clock == 0:
             self.clock = 1
             self.digital_on(1)
