@@ -48,6 +48,9 @@ class ExpectedMachineState:
         self.jk = {'Carry': 0,
                    'Cmp': 0,
                    'NegCarry': 0}
+        self.data = {'Carry': 0,  # D flip flops that copy from the JK flipflops in phase 3
+                     'Cmp': 0,
+                     'NegCarry': 0}
         self.f = [1, 0, 0, 0]
         self.nf = [0, 1, 1, 1]
         self.clock = 0
@@ -205,12 +208,12 @@ class ExpectedMachineState:
         if self.f[2] and self.instruction()[2]:  # ADV
             a = bin_to_value(self.bus_from_registers())
             b = bin_to_value(self.r['T'])
-            res = a + b + self.jk['Carry']
+            res = a + b + self.data['Carry']
             return res > 255
 
     def neg_carry(self):
         if self.f[2] and self.instruction()[6]:  # NEG
-            result, carry = neg(self.bus_from_registers(), self.jk['NegCarry'])
+            result, carry = neg(self.bus_from_registers(), self.data['NegCarry'])
             return carry
 
 
@@ -227,7 +230,7 @@ class ExpectedMachineState:
         if self.f[2] and self.instruction()[2]:  # ADV
             a = bin_to_value(self.bus_from_registers())
             b = bin_to_value(self.r['T'])
-            res = a + b + self.jk['Carry']
+            res = a + b + self.data['Carry']
             if res > 255:
                 res = res - 256
             return [int(i) for i in bin_fixed_width(res)]
@@ -238,7 +241,7 @@ class ExpectedMachineState:
             else:
                 return None
         if self.f[2] and self.instruction()[6]:  # NEG
-            result, carry = neg(self.bus_from_registers(), self.jk['NegCarry'])
+            result, carry = neg(self.bus_from_registers(), self.data['NegCarry'])
             return result
         if self.f[3]:
             return copy.copy(self.r['TP1'])
@@ -268,6 +271,7 @@ class ExpectedMachineState:
         click['TM1'] = self.f[1]  # Take copy of Mem pointer in phase 2 for use in writing.
         click['Carry'] = self.f[2] and self.instruction()[2]
         click['NegCarry'] = self.f[2] and self.instruction()[6]
+        click['Data'] = self.f[3]
         click['Cmp'] = self.f[2] and self.instruction()[4]
         return click
 
@@ -294,6 +298,9 @@ class ExpectedMachineState:
             self.jk['NegCarry'] = self.neg_carry()
         if click['Cmp']:
             self.jk['Cmp'] = self.cmp()
+        if click['Data']:
+            self.data['Carry'] = self.jk['Carry']
+            self.data['NegCarry'] = self.jk['NegCarry']
         for key in ['P1', 'M1', 'W', 'A', 'R']:
             if click[key]:
                 self.r[key] = bus_value

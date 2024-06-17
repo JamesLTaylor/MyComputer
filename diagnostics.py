@@ -10,7 +10,7 @@ def test_rdv_to_any():
             interface = MyComputerInterface(program, state, verbose=True, real_device=True)
             interface.full_cycle(3)
             val = bin_to_value(interface.memory[3][:8])
-            print(f'\nAsserting {val} = {test_value}\n')
+            print(f'\nRead/write for {r}: Asserting {val} = {test_value}\n')
             assert str(val) == test_value
 
 

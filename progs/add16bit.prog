@@ -2,6 +2,8 @@
 *b = 3456
 *result = 0
 
+RDV A 0
+ADV A 0 # ensure carry is empty
 RDV M1 a.0
 RDM A   # A has low bits of a
 RDV M1 b.0
