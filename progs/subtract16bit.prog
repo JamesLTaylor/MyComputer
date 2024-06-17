@@ -1,0 +1,50 @@
+*a = 20000
+*b = 10000
+*neg_b = 0
+*is_neg_result = 0
+*result = 0
+
+# Negate b
+RDV M1 b.0
+RDM A       # A has low bits of b
+NEG A
+RDV M1 neg_b.0
+WRT R
+RDV M1 b.1
+RDM A       # A has high bits of b
+NEG A 1
+RDV M1 neg_b.1
+WRT R
+
+# Add a to -b
+ADV A 0    # clear ADD carry bit
+RDV M1 a.0
+RDM A
+RDV M1 neg_b.0
+ADM A
+RDV M1 result.0
+WRT R
+RDV M1 a.1
+RDM A
+RDV M1 neg_b.1
+ADM A
+RDV M1 result.1
+WRT R
+
+# check for overflow
+RDV A 0
+ADV A 0
+
+JMZ R NOCARRY  # jump if there is no carry. i.e. the result is negative
+RDV A 78
+RDV M1 is_neg_result
+WRT A      # Write a 89(Y) to is_neg_result if there is a carry otherwise 78(N)
+RDV P1 END
+
+:NOCARRY
+RDV A 89
+RDV M1 is_neg_result
+WRT A
+
+:END
+NOP

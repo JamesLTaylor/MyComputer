@@ -81,23 +81,26 @@ Flags control which register is enabled to so that its contents are presented to
 | R    | Only for RDV, CPY. need for ADV |        |
  
 ### Instructions
-| Name  | Binary  | Wired         | Comment         | 
-|-------|---------|---------------|-----------------|
-| RDV   | 00111   | Yes           |                 |
-| CPY   | 00101   | Yes           |                 |
-| WRT   | 00100   | Yes           |                 |
-| RDM   | 00110   | Yes           |                 |
-| ADV   | 01001   | without carry |                 |
-| ADM   | 01000   | No            |                 |
-| JMZ   | 10001   | Yes           |                 |
-| NEG   | 11001   | No            | Write -SRC to R |
+| Name | Binary | Wired | Comment                                                                                         | 
+|------|--------|-------|-------------------------------------------------------------------------------------------------|
+| RDV  | 00111  | Yes   | Read the immediate value into the specified register                                            |
+| CPY  | 00101  | Yes   | Copy from SRC register to TGT register                                                          |
+| WRT  | 00100  | Yes   |                                                                                                 |
+| RDM  | 00110  | Yes   |                                                                                                 |
+| ADV  | 01001  | Yes   | Add immediate value to TGT. Will use carry from previous ADV/ADM. Run ADV A 0 to clear          |
+| ADM  | 01000  | Yes   |                                                                                                 |
+| JMZ  | 10001  | Yes   | Copy the immediate value to P1 if the SRC register is zero.                                     |
+| NEG  | 11001  | Yes   | Write X to R where SRC+X = 256. Set immediate to 1 to use carry from previous NEG, 0 to ignore. | 
+| NOP  | 00000  | Yes   | Do nothing. Not interpreted by device. Used by interface to halt and send no more clocks.       |
 
 
 
 Instruction bits are n0 n1 n2 n3 n4.
 
-* n4 says phase 2 should load from P+1 not M1
-* n3 says first address is Target not Source.
+* n1 says if phase 3 should write to R
+* n3 says if first address is Target not Source.
+* n4 says if phase 2 should load from P+1 not M1
+
 
 ### Registers
 
@@ -116,8 +119,20 @@ Instruction bits are n0 n1 n2 n3 n4.
 
  * Only write for 00100
  * Add NEG
- * Add M0, P0
+ * Add M0, P0 - they are always targets so can avoid some logic. (they have to be because their output is always to the
+                connection bus)
  * Store carry for ADV (allow >8 bit add)
  * Store carry for NEG (to allow >8 bit neg)
  * RDV A 0; ADV A 0; should put carry in R to allow jump on <>
+ * Have special addresses for "screen" output
+
+## Test Programs
+
+1. Add 16 bit numbers
+2. Subtract 16 bit numbers
+3. Find the largest number in list
+4. Sort a list
+5. Find the largest number in a list that is longer than 128 numbers
+
+
 

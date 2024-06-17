@@ -163,10 +163,10 @@ class MyComputerInterface:
             parts = parts + ['0'] * (2-len(parts))
             if offset == 0:
                 self.memory[ind] = bin_fixed_width(value) + self.memory[ind][8:]
-                self.readable_memory[ind] = str(value) + ' ' + parts[1] + comment
+                self.readable_memory[ind] = f'{value} {parts[1]} ({int(value) + 256 * int(parts[1])}) {comment}'
             else:
                 self.memory[ind] = self.memory[ind][:9] + bin_fixed_width(value)
-                self.readable_memory[ind] = parts[0] + ' ' + str(value)
+                self.readable_memory[ind] = f'{int(parts[0])} {value} ({int(parts[0]) + 256 * int(value)}) {comment}'
 
     def digital_on(self, pos):
         self.device.digital_on(pos)
@@ -189,7 +189,7 @@ class MyComputerInterface:
     def toggle_clock(self):
         # Get address from computer via device
         if self.real_device:
-            time.sleep(0.1)
+            time.sleep(0.2)
         if self.clock == 0:
             self.clock = 1
             self.digital_on(1)

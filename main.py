@@ -287,8 +287,8 @@ class TestTab(QWidget):
         self.src.setText(txt(self.state.src()))
         self.tgt.setText(txt(self.state.tgt()))
 
-        self.carry.setText(txt(self.state.carry))
-        self.cmp.setText(txt(self.state.cmp))
+        self.carry.setText(txt(self.state.jk['Carry']))
+        self.cmp.setText(txt(self.state.jk['Cmp']))
         self.write.setText(txt(self.state.write()))
 
         for name, (click, value, disable) in self.rows.items():
@@ -360,7 +360,11 @@ def run():
     # 7x11
     # prog_name = 'mult.prog'
     # prog_name = 'read_write_a.prog'
-    prog_name = 'fibonacci.prog'
+    # prog_name = 'fibonacci.prog'
+    # prog_name = 'add16bit.prog'
+    # prog_name = 'subtract16bit.prog'
+    prog_name = 'find_largest.prog'
+    # prog_name = 'test.prog'
     with open(f'./progs/{prog_name}') as f:
         program = f.readlines()
     expected_machine_state = ExpectedMachineState()

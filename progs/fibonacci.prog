@@ -9,7 +9,7 @@
 # copy last value written to working
 RDV A results
 RDV M1 pos
-ADM A       # Add &pos to &results
+ADM A              # Add &pos to &results
 CPY R M1
 RDM A
 RDV M1 working
@@ -22,6 +22,7 @@ ADM A              # Add &pos to &results
 CPY R A
 ADV A -2
 CPY R M1           # now pointing to 2nd last written value
+ADV A 0            # clear the carry bit
 RDM A
 RDV M1 working
 ADM A              # R now has next value
@@ -50,6 +51,7 @@ ADV A -1
 WRT R
 
 JMZ R END
+ADV A 0            # clear the carry bit
 RDV P1 START
 
 :END

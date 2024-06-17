@@ -1,0 +1,44 @@
+*temp = 0
+*neg_test = 0
+*pos = 20  # length of list, will iterate down to 0
+*values = [1270, 1389, 501, 447, 730, 1311, 1809, 1262, 221, 1801]
+
+:START
+# decrement pos
+RDV M1 pos
+RDM A
+ADV A -2
+WRT R
+ADV A 0    # clear the carry bit from this subtraction
+# negate test value
+RDV A values
+RDV M1 pos
+ADM A
+CPY R M1
+RDM A
+NEG A
+RDV M1 neg_test
+WRT A
+CPY R A
+RDV M1 temp
+ADM A    # if A>temp then temp + -A should produce a carry bit
+
+RDV A 0
+ADV A 0  # This is the carry bit from temp + -A
+
+JMZ R CARRY
+RDV P1 NOCARRY
+:CARRY
+RDV M1 neg_test
+RDM A
+RDV M1 temp
+WRT A
+
+:NOCARRY
+RDV M1 pos
+RDM A
+JMZ A END
+RDV P1 START
+
+:END
+NOP
