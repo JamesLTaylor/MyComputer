@@ -216,7 +216,6 @@ class ExpectedMachineState:
             result, carry = neg(self.bus_from_registers(), self.data['NegCarry'] and self.r['T'][7])
             return carry
 
-
     def bus_to_registers(self):
         """
         logic of computer
@@ -255,7 +254,7 @@ class ExpectedMachineState:
         write_target = (self.instruction()[1] and (self.r['N'][3] or self.r['N'][4]))
         p1_wrt_tmp = not self.tgt()[1] and write_target
         click['P1'] = (self.f[2] and p1_wrt_tmp
-                       or (self.f[2] and self.cmp())
+                       or (self.f[2] and self.instruction()[4] and self.cmp())
                        or (self.f[3] and not (self.instruction()[4] and self.jk['Cmp']) and not p1_wrt_tmp)  # this will pick up the program counter
                        )
         click['M1'] = self.f[2] and not self.tgt()[3] and write_target
