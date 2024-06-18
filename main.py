@@ -364,8 +364,9 @@ def run():
     # prog_name = 'add16bit.prog'
     # prog_name = 'subtract16bit.prog'
     # prog_name = 'find_largest.prog'
+    prog_name = 'find_largest16bit.prog'
     # prog_name = 'test.prog'
-    prog_name = 'turing_or.prog'
+    # prog_name = 'turing_or.prog'
     with open(f'./progs/{prog_name}') as f:
         program = f.readlines()
     expected_machine_state = ExpectedMachineState()
