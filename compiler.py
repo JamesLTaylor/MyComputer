@@ -6,11 +6,48 @@ from utils import translate_to_machine_instruction
 def compile(program):
     variables = {}  # name->address
     labels = {}     # name->address
+    macros = defaultdict(list)
     # Extract variables and labels
     address = 0
     asm = []
     readable = []
     insert_rows = defaultdict(list)
+    # Find Macros
+    removed = []
+    i = 0
+    while i < len(program):
+        full_line = program[i]
+        if full_line.startswith('DEFINE'):
+            is_open = True
+            name = None
+            while is_open:
+                full_line = program[i]
+                if '{' in full_line:
+                    name = full_line.split()[1]
+                    full_line = full_line.split('{')[1]
+                elif '}' in full_line:
+                    full_line = full_line.split('}')[0]
+                    is_open = False
+                if name is None:
+                    raise Exception('Macro does not appear to have a name')
+                if len(full_line.strip()) > 0:
+                    macros[name].append(full_line)
+                i += 1
+        else:
+            removed.append(full_line)
+            i+=1
+    program = removed
+    expanded = []
+    for full_line in program:
+        is_macro = False
+        for macro, lines in macros.items():
+            if macro in full_line.split():
+                expanded += lines
+                is_macro = True
+        if not is_macro:
+            expanded.append(full_line)
+    program = expanded
+
     for full_line in program:
         full_line = full_line.strip()
         line = full_line.split('#')[0].strip()
@@ -67,7 +104,7 @@ def compile(program):
 
 
 if __name__ == '__main__':
-    prog_name = 'fibonacci.prog'
+    prog_name = 'turing_or.prog'
     with open(f'./progs/{prog_name}') as f:
         program = f.readlines()
     asm = compile(program)

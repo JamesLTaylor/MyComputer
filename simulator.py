@@ -292,7 +292,7 @@ class ExpectedMachineState:
         if click['TM1']:
             self.r['TM1'] = copy.copy(self.bus_from_registers())
         if click['Carry']:
-            self.jk['Carry'] = self.carry()  # PROBLEM - carry() uses self.jk['Carry']
+            self.jk['Carry'] = self.carry()
         if click['NegCarry']:
             self.jk['NegCarry'] = self.neg_carry()
         if click['Cmp']:

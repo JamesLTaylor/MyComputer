@@ -1,0 +1,74 @@
+# OR based on the Turing machine described at:
+# https://textbooks.cs.ksu.edu/cs-zero/i-concepts/05-universal-computers/06-what-are-universal-computers/index.html
+# The example program does not use their instructions:
+#  * Move Right 1
+#  * goto ??
+# But it is easy to see that these could also be handled.
+
+DEFINE READ_A {
+RDV M1 head
+RDM A
+CPY A M1
+RDM A}
+
+DEFINE LEFT {
+RDV M1 head
+RDM A
+ADV A -2
+WRT R
+ADV A 0}
+
+*tape = [0,0,0]
+*head = 4
+
+:L0  # Add offset to head
+RDV M1 head
+RDM A
+ADV A tape
+WRT R
+
+:L1  # If 1, go to #5
+READ_A
+JMZ A L2
+RDV P1 L5
+
+:L2 # Move left
+LEFT
+
+:L3 # If 0, go to #9
+READ_A
+JMZ A L9
+
+:L4 # If 1, go to #6
+READ_A
+JMZ A L5
+RDV P1 L6
+
+:L5 # Move Left
+LEFT
+
+:L6 # Move Left
+LEFT
+
+:L7 # Write 1
+RDV M1 head
+RDM A
+CPY A M1
+RDV A 1
+WRT A
+
+:L8 # Stop
+NOP
+
+:L9 # Move Left
+LEFT
+
+:L10 # Write 0
+RDV M1 head
+RDM A
+CPY A M1
+RDV A 0
+WRT A
+
+:L11 # Stop
+NOP
