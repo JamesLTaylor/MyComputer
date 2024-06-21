@@ -55,4 +55,4 @@ ADV A 0            # clear the carry bit
 RDV P1 START
 
 :END
-NOP
+HLT

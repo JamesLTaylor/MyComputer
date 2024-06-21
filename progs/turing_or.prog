@@ -58,7 +58,7 @@ RDV A 1
 WRT A
 
 :L8 # Stop
-NOP
+HLT
 
 :L9 # Move Left
 LEFT
@@ -71,4 +71,4 @@ RDV A 0
 WRT A
 
 :L11 # Stop
-NOP
+HLT

@@ -1,0 +1,141 @@
+::OS
+#--------------------------------------------------------------------------------------
+*src_pg = 0      # stored in R on call
+*src_addr = 0    # this must be written to before a caller calls a different page
+*tgt_pg = 0      # stored in A on call
+*pg_stack_ptr = 0
+*pg_stack = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]  # location to return to. page and address
+
+RDV P1 START
+:TURNPAGE
+CPY A P0           # call into external page
+RDV P1 CALL        # landing point for external call
+
+:START
+RDV A pg_stack
+RDV M1 pg_stack_ptr
+ADM A
+WRT R              # pg_stack_ptr now has address of head of stack
+RDV A MAIN
+RDV R MAINSTART
+RDV P1 TURNPAGE    # run main program
+
+:CALL              # A is target page, R is source page, source_addr has been written
+RDV M0 OS
+JMZ R RETURN       # check if this is a return from a prior call
+RDV M1 src_pg
+WRT R
+# in future put these on a stack to allow multiple calls
+RDV R 7            # address that all pages should start on
+RDV P1 TURNPAGE
+
+:RETURN
+RDV M1 src_pg
+RDM A
+RDV M1 src_addr
+RDM R
+RDV P1 TURNPAGE
+
+::MAIN
+#--------------------------------------------------------------------------------------
+*list1 = [25, 250, 2500]
+*list2 = [17, 27, 270]
+*pos = 6
+*results = [0, 0, 0]
+NOP
+:MAINTURNPAGE
+RDV P0 OS          # Jump from this page, will go back to OS page
+CPY R P1           # Land in this page, R contains the instruction to continue with
+
+:MAINSTART         # copy numbers into subtract
+RDV M0 MAIN
+RDV A list1.0
+RDV M1 pos
+ADM A
+CPY R M1
+RDM A
+RDV M0 SUBTRACT
+RDV M1 a.0
+WRT A
+
+RDV M0 MAIN
+RDV A list2.0
+RDV M1 pos
+ADM A
+CPY R M1
+RDM A
+RDV M0 SUBTRACT
+RDV M1 b.0
+WRT A
+
+# now put SUBTRACT on the page stack and jump
+RDV M0 OS
+RDV M1 src_addr
+RDV A MAINRETURN
+WRT A
+RDV A SUBTRACT
+RDM R MAIN
+RDV P1 MAINTURNPAGE
+:MAINRETURN
+# write result
+RDV M0 SUBTRACT
+RDV M1 result
+RDM A
+RDV M0 MAIN
+RDV M1 results
+ADV M1 pos
+CPY R M1
+WRT A
+
+# End of loop
+RDV M1 pos
+RDM A
+ADV A -2
+WRT R
+JMZ R FINISHED
+RDV P1 START
+:FINISHED
+HLT
+
+
+::SUBTRACT  # a routine on its own page. You should write to a and b then read from result when it returns
+#--------------------------------------------------------------------------------------
+*a = 20000
+*b = 10000
+*neg_b = 0
+*result = 0
+NOP
+:SUBTRACTTURNPAGE
+RDV P0 OS          # Jump from this page, will go back to OS page
+CPY R P1           # Land in this page, R contains the instruction to continue with
+
+:SUBTRACTSTART
+# Negate b
+RDV M1 b.0
+RDM A       # A has low bits of b
+NEG A
+RDV M1 neg_b.0
+WRT R
+RDV M1 b.1
+RDM A       # A has high bits of b
+NEG A 1
+RDV M1 neg_b.1
+WRT R
+
+# Add a to -b
+ADV A 0    # clear ADD carry bit
+RDV M1 a.0
+RDM A
+RDV M1 neg_b.0
+ADM A
+RDV M1 result.0
+WRT R
+RDV M1 a.1
+RDM A
+RDV M1 neg_b.1
+ADM A
+RDV M1 result.1
+WRT R
+
+RDV R 0
+RDV P1 SUBTRACTTURNPAGE

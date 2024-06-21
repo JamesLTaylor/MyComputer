@@ -5,6 +5,7 @@
 *result = 0
 
 # Negate b
+NOP
 RDV M1 b.0
 RDM A       # A has low bits of b
 NEG A
@@ -47,4 +48,4 @@ RDV M1 is_neg_result
 WRT A
 
 :END
-NOP
+HLT

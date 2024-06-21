@@ -1,4 +1,5 @@
-instructions = {'NOP': '00000',
+instructions = {'HLT': '00000',
+                'NOP': '00111100',
                 'RDV': '00111',
                 'CPY': '00101',
                 'WRT': '00100',
@@ -21,7 +22,7 @@ registers_inv = {v: k for k, v in registers.items()}
 
 device_bus_addr = {0: '111',  # P1 first 4
                    1: '011',
-                   2: '010',  # P2 first 4 - not used yet
+                   2: '101',  # P2 first 4 - not used yet
                    3: '001',
                    4: '110',  # general read from computer first 4
                    5: '010',

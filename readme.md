@@ -72,26 +72,27 @@ Clicks control when a register will write the contents of the bus to registers
 
 Flags control which register is enabled to so that its contents are presented to the bus from registers.
 
-| Name | Wired                           | Tested | 
-|------|---------------------------------|--------|
-| P1   | only RDV, CPY. open OR for rest |        |
-| M1   | Yes                             |        |
-| W    | Yes                             |        |
-| A    | Yes                             |        |
-| R    | Only for RDV, CPY. need for ADV |        |
+| Name | Wired | Tested | 
+|------|-------|--------|
+| P1   | Yes   |        |
+| M1   | Yes   |        |
+| W    | Yes   |        |
+| A    | Yes   |        |
+| R    | Yes   |        |
  
 ### Instructions
-| Name | Binary | Wired | Comment                                                                                         | 
-|------|--------|-------|-------------------------------------------------------------------------------------------------|
-| RDV  | 00111  | Yes   | Read the immediate value into the specified register                                            |
-| CPY  | 00101  | Yes   | Copy from SRC register to TGT register                                                          |
-| WRT  | 00100  | Yes   |                                                                                                 |
-| RDM  | 00110  | Yes   |                                                                                                 |
-| ADV  | 01001  | Yes   | Add immediate value to TGT. Will use carry from previous ADV/ADM. Run ADV A 0 to clear          |
-| ADM  | 01000  | Yes   |                                                                                                 |
-| JMZ  | 10001  | Yes   | Copy the immediate value to P1 if the SRC register is zero.                                     |
-| NEG  | 11001  | Yes   | Write X to R where SRC+X = 256. Set immediate to 1 to use carry from previous NEG, 0 to ignore. | 
-| NOP  | 00000  | Yes   | Do nothing. Not interpreted by device. Used by interface to halt and send no more clocks.       |
+| Name | Binary    | Wired | Comment                                                                                         | 
+|------|-----------|-------|-------------------------------------------------------------------------------------------------|
+| RDV  | 00111     | Yes   | Read the immediate value into the specified register                                            |
+| CPY  | 00101     | Yes   | Copy from SRC register to TGT register                                                          |
+| WRT  | 00100     | Yes   |                                                                                                 |
+| RDM  | 00110     | Yes   |                                                                                                 |
+| ADV  | 01001     | Yes   | Add immediate value to TGT. Will use carry from previous ADV/ADM. Run ADV A 0 to clear          |
+| ADM  | 01000     | Yes   | Add value currently pointed to by M1 to SRC.                                                    |
+| JMZ  | 10001     | Yes   | Copy the immediate value to P1 if the SRC register is zero.                                     |
+| NEG  | 11001     | Yes   | Write X to R where SRC+X = 256. Set immediate to 1 to use carry from previous NEG, 0 to ignore. |
+| NOP  | 00111_100 | N/A   | Do nothing, read zero to nonexistent register 4                                                 |
+| HLT  | 00000     | N/A   | Do nothing. Not interpreted by device. Used by interface to halt and send no more clocks.       |
 
 
 
@@ -100,6 +101,10 @@ Instruction bits are n0 n1 n2 n3 n4.
 * n1 says if phase 3 should write to R
 * n3 says if first address is Target not Source.
 * n4 says if phase 2 should load from P+1 not M1
+
+**Valid Sources**
+
+Note that M0 and P0 can only be written to, not read from. i.e. you can only CPY to, RDV and RDM.
 
 
 ### Registers
@@ -115,15 +120,21 @@ Instruction bits are n0 n1 n2 n3 n4.
 | 6     | 110     | A        |
 | 7     | 111     | R        |
 
+## Languange/Assembler/Compiler
+
+Comment lines start with `#`
+
+```
+# This is a comment
+```
+
+variable declarations start with  
+
 ## TODO
 
  * Only write for 00100
- * Add NEG
  * Add M0, P0 - they are always targets so can avoid some logic. (they have to be because their output is always to the
                 connection bus)
- * Store carry for ADV (allow >8 bit add)
- * Store carry for NEG (to allow >8 bit neg)
- * RDV A 0; ADV A 0; should put carry in R to allow jump on <>
  * Have special addresses for "screen" output
 
 ## Test Programs

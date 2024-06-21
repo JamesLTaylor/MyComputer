@@ -18,4 +18,4 @@ ADM A   # result of high bits is in R, and carry has been set
 RDV M1 result.1
 WRT R
 
-NOP
+HLT

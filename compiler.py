@@ -3,16 +3,11 @@ from collections import defaultdict
 from utils import translate_to_machine_instruction
 
 
-def compile(program):
-    variables = {}  # name->address
-    labels = {}     # name->address
+def expand_macros(program):
+    """
+    Global search for all macros and replace them
+    """
     macros = defaultdict(list)
-    # Extract variables and labels
-    address = 0
-    asm = []
-    readable = []
-    insert_rows = defaultdict(list)
-    # Find Macros
     removed = []
     i = 0
     while i < len(program):
@@ -35,10 +30,9 @@ def compile(program):
                 i += 1
         else:
             removed.append(full_line)
-            i+=1
-    program = removed
+            i += 1
     expanded = []
-    for full_line in program:
+    for full_line in removed:
         is_macro = False
         for macro, lines in macros.items():
             if macro in full_line.split():
@@ -46,13 +40,63 @@ def compile(program):
                 is_macro = True
         if not is_macro:
             expanded.append(full_line)
-    program = expanded
+    return expanded
 
+
+def allocate_data_mem(new_var, variables, address, asm, readable, fill_page=True):
+    """
+
+    :param new_var:
+    :param variables:
+    :param address:
+    :param asm:
+    :param readable:
+    :param fill_page: For all but the last page, the memory should be filled with zeros
+    :return:
+    """
+    var_addresses = {}
+    for name, (_, value) in variables.items():
+        if name not in new_var:
+            continue
+        var_addresses[name] = address
+        for i, v in enumerate(value):
+            asm.append(str(v))
+            readable.append(f'{v} # {name}')
+            address += 2
+    for name, addr in var_addresses.items():
+        value = variables[name][1]
+        variables[name] = (addr % 256, value)
+    fill_addr = address % 256
+    if fill_page:
+        while fill_addr < 256:
+            fill_addr += 2
+            readable.append('')
+            asm.append('0')
+
+
+def extract_names_and_labels(program):
+    address = 0
+    variables = {}  # name->address
+    labels = {}  # name->address
+    page = -1
+    readable = []
+    asm = []
+    insert_rows = defaultdict(list)
+    new_var = []
     for full_line in program:
         full_line = full_line.strip()
         line = full_line.split('#')[0].strip()
         if len(line) == 0:
             insert_rows[address].append(full_line)
+        elif line.startswith('::'):  # a new page
+            # New page, allocate variable data and fill up rest of page with zeros
+            if page >= 0:
+                allocate_data_mem(new_var, variables, address, asm, readable)
+            page += 1
+            address = 256*page
+            labels[line[2:]] = page
+            insert_rows[address].append(full_line)
+            new_var = []
         elif line[0] == '*':  # a variable declaration
             name, value = line[1:].split('=')
             parts = value.strip().split(',')
@@ -63,27 +107,26 @@ def compile(program):
                 values = [int(parts[0])]
                 length = 1
             variables[name.strip()] = (length, values)
+            new_var.append(name.strip())
             insert_rows[address].append(full_line)
         elif line[0] == ':':
-            labels[line[1:]] = address + 1
+            labels[line[1:]] = (address % 256) + 1
             insert_rows[address].append(full_line)
         else:
             readable.append(full_line)
             asm.append(line)
             address += 2
-    for name, (length, value) in variables.items():
-        variables[name] = (address, value)
-        address += 2*length
-    machine_ready = []
-    data_rows = (address//2 - len(asm))
-    asm += [0] * data_rows
-    readable += [''] * data_rows
-    for name, (address, value) in variables.items():
-        for i, v in enumerate(value):
-            asm[address//2 + i] = str(v)
-            readable[address//2 + i] = f'{v} # {name}'
+    allocate_data_mem(new_var, variables, address, asm, readable, fill_page=False)
+    return variables, labels, asm, readable, insert_rows
 
-    # replace variables and labels with their memory values
+
+def compile(program):
+    # Extract variables and labels
+    program = expand_macros(program)
+    variables, labels, asm, readable, insert_rows = extract_names_and_labels(program)
+    machine_ready = []
+
+    # replace variables and labels with their memory values and compile the assembler lines
     for line in asm:
         parts = line.split()
         for name, (address, value) in variables.items():
@@ -98,13 +141,24 @@ def compile(program):
         for name, address in labels.items():
             if name in parts:
                 line = line.replace(name, str(address))
-        machine_ready.append(translate_to_machine_instruction(line))
+        try:
+            machine_ready.append(translate_to_machine_instruction(line))
+        except Exception as ex:
+            print(f'error on line {line}')
+            raise
 
     return machine_ready, readable, insert_rows
 
 
-if __name__ == '__main__':
-    prog_name = 'turing_or.prog'
+def main():
+    prog_name = 'pages2.prog'
     with open(f'./progs/{prog_name}') as f:
         program = f.readlines()
-    asm = compile(program)
+    machine_ready, readable, insert_rows = compile(program)
+    for line in readable:
+        print(line)
+
+
+if __name__ == '__main__':
+    main()
+
