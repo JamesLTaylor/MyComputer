@@ -19,7 +19,7 @@ The K8055 dll is 32bit so you need a 32bit python to run this.
 
 Acts as the main memory of the computer and the clock.
 The basic cycle is:
- * read contents of address bus (8bits) ()
+ * read contents of address bus (8bits + 8bits for page)
  * read R/W bit
  * if read, get contents at address and put them on the data bus
  * if write, take contents on data bus and write them to the memory 
@@ -36,22 +36,22 @@ The basic cycle is:
 8 blocks of 4 bits each, numbered 0-7
 
  * 0, 1 = 8 bits of address/data
- * *2, 3 = future extra 8 bits of address.* 
+ * 2, 3 = 8 bits for memory or program page counter. 
  * 4, 5 = 8 bits of address used during phase 2 write
  * 6, 7 = 8 bits of data from MyComputer
 
 ## Cycle
  * start in phase 0
  * Read/write
- * click to 1 (writes N)
+ * click to 1 (writes N and TP1)
  * click to 0 (moves to phase 1)
  * Read/write
- * click to 1 (writes to W & T)
+ * click to 1 (writes to W, T, TM1)
  * click to 0 (moves to phase 2)
  * calculations take place in this phase
- * click to 1 (write result of calculations to registers/memory)
+ * click to 1 (write result of calculations to registers/memory, write carry bits)
  * click to 0 (moves to phase 3)
- * click to 1 (write incremented program counter if not written in phase 2)
+ * click to 1 (write incremented program counter TP1 if not written in phase 2, copy carry bits to storage for next cycle)
  * click to 0 (moves to phase 0)
  
 ## Wiring status
@@ -61,11 +61,11 @@ Clicks control when a register will write the contents of the bus to registers
 
 | Name | Wired | Tested | 
 |------|-------|--------|
-| P1   | No    |        |
+| P1   | Yes   |        |
 | M1   | Yes   |        |
 | W    | Yes   |        |
 | A    | Yes   |        |
-| R    | No    |        |
+| R    | Yes   |        |
 | N    | Yes   |        |
 | TN   | Yes   |        |
 
@@ -108,18 +108,30 @@ Instruction bits are n0 n1 n2 n3 n4.
 Note that M0 and P0 can only be written to, not read from. i.e. you can only CPY to, RDV and RDM.
 
 
-### Registers
+### Addressable registers
 
-| Index | Binary  | Name     |
-|-------|---------|----------|
-| ~~0~~ | ~~000~~ | ~~P0~~   |
-| 1     | 001     | P1       |
-| ~~2~~ | ~~010~~ | ~~M0~~   |
-| 3     | 011     | M1       |
-| 4     | 100     | *unused* |
-| 5     | 101     | *unused* |
-| 6     | 110     | A        |
-| 7     | 111     | R        |
+| Index | Binary | Name     |
+|-------|--------|----------|
+| 0     | 000    | P0       |
+| 1     | 001    | P1       |
+| 2     | 010    | M0       |
+| 3     | 011    | M1       |
+| 4     | 100    | *unused* |
+| 5     | 101    | *unused* |
+| 6     | 110    | A        |
+| 7     | 111    | R        |
+
+### Other registers/storage
+| Name          | Note |
+|---------------|------|
+| N             |      |
+| T             |      |
+| W             |      |
+| TM1           |      |
+| TP1           |      |
+| Carry bits JK |      |
+| Carry bits D  |      |
+
 
 ## Languange/Assembler/Compiler
 
@@ -131,24 +143,30 @@ Comment lines start with `#`
 
 Pariable declarations start with  `*`
 
-Line labels begin with ':'
+Line labels begin with `:`
 
-Page labels begin with '::'
-
-## TODO
-
- * Only write for 00100
- * Add M0, P0 - they are always targets so can avoid some logic. (they have to be because their output is always to the
-                connection bus)
- * Have special addresses for "screen" output
+Page labels begin with `::`
 
 ## Test Programs
 
-1. Add 16 bit numbers
-2. Subtract 16 bit numbers
-3. Find the largest number in list
-4. Sort a list
-5. Find the largest number in a list that is longer than 128 numbers
+* add16bit
+* fibonacci
+* find_largest
+* find_largest16bit
+* mult
+* turing_or - run a universal turing machine for a simple problem, OR on 2 bits
+* subtract16bit
+
+
+## TODO
+
+ * Have special addresses for "screen" output
+
+## Test Programs still to write
+
+1. Paging that allows nested calls
+2. Sort a list
+3. Find the largest number in a list that is longer than 128 numbers
 
 
 
