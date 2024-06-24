@@ -141,7 +141,7 @@ Comment lines start with `#`
 # This is a comment
 ```
 
-Pariable declarations start with  `*`
+Variable declarations start with  `*`
 
 Line labels begin with `:`
 
