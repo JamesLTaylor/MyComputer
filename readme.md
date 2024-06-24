@@ -4,7 +4,8 @@ This is a python application to support a simple 8-bit computer that I am buildi
 an old Velleman K8055 kit plays the role of a clock pulse and the main RAM of the computer. All
 the other logic is implemented in the electronics on the breadboards.
 
-![20240606_220333.jpg](images%2F20240606_220333.jpg)
+![20240624_120002.jpg](images%2F20240624_120002.jpg)
+
 
 ## Wrapping DLL
 This uses a Python module created By Fergus Leahy a.k.a. Fergul Magurgul

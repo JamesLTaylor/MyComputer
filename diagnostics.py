@@ -37,7 +37,7 @@ def test_rdv_to_any():
 
 
 def test_rdv_p0():
-    program = ['::PAGE0', 'RDV M0 PAGE0', 'RDV P0 PAGE1', '::PAGE1', 'NOP', 'RDV A 101', 'RDV M1 8', 'WRT A']
+    program = ['::PAGE0', 'RDV M0 PAGE0', 'RDV P0 PAGE1', '::PAGE1', 'NOP', 'NOP', 'RDV A 101', 'RDV M1 8', 'WRT A']
     state = ExpectedMachineState()
     interface = MyComputerInterface(program, state, verbose=True, real_device=True)
     interface.full_cycle(5)
@@ -74,8 +74,6 @@ def test_cpy_m0():
     val = bin_to_value(interface.memory[128][:8])
     print(f'\nAsserting CPY to M0: {val}\n')
     assert val == 165
-
-
 
 
 # test_rdv_to_any()
