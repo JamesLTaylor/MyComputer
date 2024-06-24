@@ -1,5 +1,6 @@
-RDV M0 1
-RDV M1 0
-RDV A 125
-WRT A
-HLT
+::PAGE0
+RDV M1 result
+RDV M0 PAGE1
+RDM A
+::PAGE1
+*result = 165

@@ -65,7 +65,7 @@ class MyComputerInterface:
                 + 4 * int(vals[1])
                 + 2 * int(vals[2])
                 + 1 * int(vals[3]))
-        # self.log(f'reading {"".join(vals)} ({value}) from address = {address}')
+        self.log(f'reading {"".join(vals)} ({value}) from address = {address}')
         return value
 
     def write_to_bus(self, address, vals):
@@ -108,6 +108,8 @@ class MyComputerInterface:
             self.toggle_clock()  # to phase 0
 
     def set_p1(self):
+        self.custom_command = translate_to_machine_instruction('RDV P0 0')
+        self.full_cycle()
         self.custom_command = translate_to_machine_instruction('RDV P1 1')
         self.full_cycle()
         self.custom_command = None
@@ -162,12 +164,18 @@ class MyComputerInterface:
             comment = '# ' + content_parts[1] if len(content_parts) > 1 else ''
             parts = content_parts[0].split()
             parts = parts + ['0'] * (2-len(parts))
+            old_val0, old_val1 = 0, 0
+            try:
+                old_val0 = int(parts[0])
+                old_val1 = int(parts[1])
+            except ValueError:
+                self.log('WARNING: Appears to be writing over instruction: {parts}')
             if offset == 0:
                 self.memory[ind] = bin_fixed_width(value) + self.memory[ind][8:]
-                self.readable_memory[ind] = f'{value} {parts[1]} ({int(value) + 256 * int(parts[1])}) {comment}'
+                self.readable_memory[ind] = f'{value} {old_val1} ({int(value) + 256 * int(old_val1)}) {comment}'
             else:
                 self.memory[ind] = self.memory[ind][:9] + bin_fixed_width(value)
-                self.readable_memory[ind] = f'{int(parts[0])} {value} ({int(parts[0]) + 256 * int(value)}) {comment}'
+                self.readable_memory[ind] = f'{int(old_val0)} {value} ({int(old_val0) + 256 * int(value)}) {comment}'
 
     def digital_on(self, pos):
         self.device.digital_on(pos)

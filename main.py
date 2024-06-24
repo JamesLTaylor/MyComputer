@@ -376,14 +376,14 @@ def run():
     # prog_name = 'subtract16bit.prog'
     # prog_name = 'find_largest.prog'
     # prog_name = 'find_largest16bit.prog'
-    # prog_name = 'test.prog'
+    prog_name = 'test.prog'
     # prog_name = 'turing_or.prog'
-    prog_name = 'pages2.prog'
+    # prog_name = 'pages2.prog'
     with open(f'./progs/{prog_name}') as f:
         program = f.readlines()
     expected_machine_state = ExpectedMachineState()
-    # interface = MyComputerInterface(program, expected_machine_state, real_device=True)
-    interface = MyComputerInterface(program, expected_machine_state, real_device=False)
+    interface = MyComputerInterface(program, expected_machine_state, verbose=True, real_device=True)
+    # interface = MyComputerInterface(program, expected_machine_state, real_device=False)
 
     app = QApplication(sys.argv)
     window = MainWindow(interface)

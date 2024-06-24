@@ -128,7 +128,11 @@ Comment lines start with `#`
 # This is a comment
 ```
 
-variable declarations start with  
+Pariable declarations start with  `*`
+
+Line labels begin with ':'
+
+Page labels begin with '::'
 
 ## TODO
 
