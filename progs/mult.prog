@@ -14,4 +14,4 @@ ADV A -1
 WRT R
 JMZ R 34     # if m22 is zero then exit loop
 RDV P1 13    # jump to start of loop
-NOP          # end of program
+HLT          # end of program

@@ -1,11 +1,6 @@
-*result = 10
-RDV A 0
-JMZ A ZERO
-RDV A 10
-RDV P1 END
-:ZERO
-RDV A 20
-:END
+::PAGE0
 RDV M1 result
-WRT A
-NOP
+RDV M0 PAGE1
+RDM A
+::PAGE1
+*result = 165

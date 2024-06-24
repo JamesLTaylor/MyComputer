@@ -225,7 +225,7 @@ class TestTab(QWidget):
 
         self.rows = {}
         self.writes_to_reg_bus = ['P1', 'M1', 'W', 'A', 'R']
-        for name in ['N', 'T', 'P1', 'M1', 'W', 'A', 'R', 'TP1', 'TM1']:
+        for name in ['N', 'T', 'P0', 'P1', 'M0', 'M1', 'W', 'A', 'R', 'TP1', 'TM1']:
             self.add_row(name)
 
         self.update_data()
@@ -269,10 +269,21 @@ class TestTab(QWidget):
 
     def update_data(self):
         rows = []
+        prior_blank = False
         for i, (m, rm) in enumerate(zip(self.interface.memory, self.interface.readable_memory)):
             prefix = '>> ' if i == self.interface.current_address // 2 else ''
             rows = rows + self.interface.insert_rows.get(i*2, [])
-            rows.append(f'{prefix}{i * 2:<5} {m:<20}  {rm}')
+            if len(self.interface.memory) > 128:
+                page = f'{i // 128: < 2}.'
+            else:
+                page = ''
+            if not rm:
+                if not prior_blank:
+                    rows += ['', '...', '']
+                    prior_blank = True
+            else:
+                prior_blank = False
+                rows.append(f'{prefix}{page}{(i % 128) * 2:<6} {m:<20}  {rm}')
         self.mem.setPlainText('\n'.join(rows))
         self.curr_address.setText(str(self.interface.current_address))
 
@@ -329,7 +340,7 @@ class TestTab(QWidget):
         pass
 
     def auto_clicked(self):
-        """ Run until NOP encountered
+        """ Run until HLT encountered
         """
         self.thread = QThread()
         self.worker = Worker()
@@ -363,12 +374,15 @@ def run():
     # prog_name = 'fibonacci.prog'
     # prog_name = 'add16bit.prog'
     # prog_name = 'subtract16bit.prog'
-    prog_name = 'find_largest.prog'
-    # prog_name = 'test.prog'
+    # prog_name = 'find_largest.prog'
+    # prog_name = 'find_largest16bit.prog'
+    prog_name = 'test.prog'
+    # prog_name = 'turing_or.prog'
+    # prog_name = 'pages2.prog'
     with open(f'./progs/{prog_name}') as f:
         program = f.readlines()
     expected_machine_state = ExpectedMachineState()
-    interface = MyComputerInterface(program, expected_machine_state, real_device=True)
+    interface = MyComputerInterface(program, expected_machine_state, verbose=True, real_device=True)
     # interface = MyComputerInterface(program, expected_machine_state, real_device=False)
 
     app = QApplication(sys.argv)

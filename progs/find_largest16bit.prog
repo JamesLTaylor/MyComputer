@@ -1,8 +1,11 @@
 *temp = 0
+*neg_temp = 0
+*largest = 0
 *neg_test = 0
-*pos = 20  # length of list, will iterate down to 0
-*values = [1270, 1389, 501, 447, 730, 1311, 1809, 1262, 221, 1801]
+*pos = 6  # length of list, will iterate down to 0
+*values = [221, 1862, 1801]
 
+ADV A 0    # clear the carry bit
 :START
 # decrement pos
 RDV M1 pos
@@ -10,28 +13,61 @@ RDM A
 ADV A -2
 WRT R
 ADV A 0    # clear the carry bit from this subtraction
-# negate test value
-RDV A values
+
+# copy next test value to temp
 RDV M1 pos
-ADM A
+RDM A
+ADV A values
 CPY R M1
 RDM A
-NEG A
-RDV M1 neg_test
+RDV M1 temp.0
 WRT A
+RDV M1 pos
+RDM A
+ADV A values
 CPY R A
-RDV M1 temp
-ADM A    # if A>temp then temp + -A should produce a carry bit
+ADV A 1
+CPY R M1
+RDM A
+RDV M1 temp.1
+WRT A
 
+# calc -temp
+RDV M1 temp.0
+RDM A       # A has low bits of b
+NEG A
+RDV M1 neg_temp.0
+WRT R
+RDV M1 temp.1
+RDM A       # A has high bits of b
+NEG A 1
+RDV M1 neg_temp.1
+WRT R
+
+# Add largest to -temp
+ADV A 0    # clear ADD carry bit
+RDV M1 largest.0
+RDM A
+RDV M1 neg_temp.0
+ADM A
+RDV M1 largest.1
+RDM A
+RDV M1 neg_temp.1
+ADM A  # Carry bit is now set if temp > largest
+
+#
 RDV A 0
 ADV A 0  # This is the carry bit from temp + -A
-
 JMZ R CARRY
 RDV P1 NOCARRY
 :CARRY
-RDV M1 neg_test
+RDV M1 temp.0
 RDM A
-RDV M1 temp
+RDV M1 largest.0
+WRT A
+RDV M1 temp.1
+RDM A
+RDV M1 largest.1
 WRT A
 
 :NOCARRY
@@ -41,4 +77,4 @@ JMZ A END
 RDV P1 START
 
 :END
-NOP
+HLT

@@ -127,7 +127,7 @@ class ExpectedMachineState:
 
     def instruction(self):
         """ n0, n1, n2 are coded into instructions
-        000 = NOP
+        000 = HLT
         001 = CPY etc
         010 = ADV
         100 = JMZ
@@ -152,6 +152,10 @@ class ExpectedMachineState:
             if line == 4:
                 val = int(self.nf[0] and bool(val))
             return val
+        elif self.bus_addr() == 2:
+            return self.page_bus()[line - 1]
+        elif self.bus_addr() == 3:
+            return self.page_bus()[line + 3]
         if self.bus_addr() == 4:
             return self.r['TM1'][line - 1]
         elif self.bus_addr() == 5:
@@ -181,6 +185,15 @@ class ExpectedMachineState:
         # f2 and src[7]
         flag['R'] = n_read_source or self.src()[7]
         return flag
+
+    def page_bus(self):
+        page_flags = {}
+        page_flags['P0'] = self.nf[0] and (self.nf[1] or not (self.r['N'][4]))
+        page_flags['M0'] = not page_flags['P0']
+        for key in ['P0', 'M0']:
+            if not page_flags[key]:
+                return self.r[key]
+
 
     def bus_from_registers(self):
         """ Only some registers can be read from
@@ -215,7 +228,6 @@ class ExpectedMachineState:
         if self.f[2] and self.instruction()[6]:  # NEG
             result, carry = neg(self.bus_from_registers(), self.data['NegCarry'] and self.r['T'][7])
             return carry
-
 
     def bus_to_registers(self):
         """
@@ -255,7 +267,7 @@ class ExpectedMachineState:
         write_target = (self.instruction()[1] and (self.r['N'][3] or self.r['N'][4]))
         p1_wrt_tmp = not self.tgt()[1] and write_target
         click['P1'] = (self.f[2] and p1_wrt_tmp
-                       or (self.f[2] and self.cmp())
+                       or (self.f[2] and self.instruction()[4] and self.cmp())
                        or (self.f[3] and not (self.instruction()[4] and self.jk['Cmp']) and not p1_wrt_tmp)  # this will pick up the program counter
                        )
         click['M1'] = self.f[2] and not self.tgt()[3] and write_target
@@ -293,7 +305,7 @@ class ExpectedMachineState:
         if click['TM1']:
             self.r['TM1'] = copy.copy(self.bus_from_registers())
         if click['Carry']:
-            self.jk['Carry'] = self.carry()  # PROBLEM - carry() uses self.jk['Carry']
+            self.jk['Carry'] = self.carry()
         if click['NegCarry']:
             self.jk['NegCarry'] = self.neg_carry()
         if click['Cmp']:
@@ -301,6 +313,6 @@ class ExpectedMachineState:
         if click['Data']:
             self.data['Carry'] = self.jk['Carry']
             self.data['NegCarry'] = self.jk['NegCarry']
-        for key in ['P1', 'M1', 'W', 'A', 'R']:
+        for key in ['P0', 'P1', 'M0', 'M1', 'W', 'A', 'R']:
             if click[key]:
                 self.r[key] = bus_value

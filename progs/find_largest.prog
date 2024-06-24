@@ -1,7 +1,7 @@
 *temp = 0
 *neg_test = 0
-*pos = 20  # length of list, will iterate down to 0
-*values = [12, 89, 50, 47, 73, 11, 18, 126, 221, 180]
+*pos = 6  # length of list, will iterate down to 0
+*values = [126, 221, 180]
 
 :START
 # decrement pos
@@ -41,4 +41,4 @@ JMZ A END
 RDV P1 START
 
 :END
-NOP
+HLT

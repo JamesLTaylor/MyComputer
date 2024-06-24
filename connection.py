@@ -65,7 +65,7 @@ class MyComputerInterface:
                 + 4 * int(vals[1])
                 + 2 * int(vals[2])
                 + 1 * int(vals[3]))
-        # self.log(f'reading {"".join(vals)} ({value}) from address = {address}')
+        self.log(f'reading {"".join(vals)} ({value}) from address = {address}')
         return value
 
     def write_to_bus(self, address, vals):
@@ -108,6 +108,8 @@ class MyComputerInterface:
             self.toggle_clock()  # to phase 0
 
     def set_p1(self):
+        self.custom_command = translate_to_machine_instruction('RDV P0 0')
+        self.full_cycle()
         self.custom_command = translate_to_machine_instruction('RDV P1 1')
         self.full_cycle()
         self.custom_command = None
@@ -126,7 +128,7 @@ class MyComputerInterface:
         else:
             offset = 9
             if self.custom_command[:5] == '00110':  # Special treatment for custom RDM command
-                address = self.get8bit(0, 1)
+                address = 256 * self.get8bit(2, 3) + self.get8bit(0, 1)
                 self.memory[address // 2]
         value = self.custom_command
         self.log(f'Running custom command: {value}')
@@ -139,13 +141,14 @@ class MyComputerInterface:
             return
         # Get address from device
         if self.phase in [1, 2]:
-            address = self.get8bit(0, 1)
+            address = 256 * self.get8bit(2, 3) + self.get8bit(0, 1)
             self.current_address = address
             # Read contents of location and send to device
-            if address >= 2 * len(self.memory):
-                self.log(f'address {address} is out of range,  returning 0')
-                address = 0
             ind, offset = self._ind_and_offset(address)
+            if ind >= len(self.memory):
+                extra = 1 +  ind - len(self.memory)
+                self.memory += ['00000000 00000000'] * extra
+                self.readable_memory += ['0'] * extra
             value = self.memory[ind]
             self.log(f'contents at {address}: {self.memory[ind]} / {self.readable_memory[ind]}')
             self.write_to_bus(7, value[(offset + 4):(offset + 8)])
@@ -153,7 +156,7 @@ class MyComputerInterface:
         # If we are in phase 3, check if write is required
         elif self.phase == 3 and self.digital_in(5):
             # Do something if write is True
-            address = self.get8bit(4, 5)
+            address = 256 * self.get8bit(2, 3) + self.get8bit(4, 5)
             value = self.get8bit(0, 1)
             self.log(f'writing {value} to {address}')
             ind, offset = self._ind_and_offset(address)
@@ -161,12 +164,18 @@ class MyComputerInterface:
             comment = '# ' + content_parts[1] if len(content_parts) > 1 else ''
             parts = content_parts[0].split()
             parts = parts + ['0'] * (2-len(parts))
+            old_val0, old_val1 = 0, 0
+            try:
+                old_val0 = int(parts[0])
+                old_val1 = int(parts[1])
+            except ValueError:
+                self.log('WARNING: Appears to be writing over instruction: {parts}')
             if offset == 0:
                 self.memory[ind] = bin_fixed_width(value) + self.memory[ind][8:]
-                self.readable_memory[ind] = f'{value} {parts[1]} ({int(value) + 256 * int(parts[1])}) {comment}'
+                self.readable_memory[ind] = f'{value} {old_val1} ({int(value) + 256 * int(old_val1)}) {comment}'
             else:
                 self.memory[ind] = self.memory[ind][:9] + bin_fixed_width(value)
-                self.readable_memory[ind] = f'{int(parts[0])} {value} ({int(parts[0]) + 256 * int(value)}) {comment}'
+                self.readable_memory[ind] = f'{int(old_val0)} {value} ({int(old_val0) + 256 * int(value)}) {comment}'
 
     def digital_on(self, pos):
         self.device.digital_on(pos)
