@@ -1,5 +1,7 @@
 from time import sleep
 
+from PyQt5.QtGui import QTextCursor
+
 from connection import translate_to_machine_instruction, MyComputerInterface, ExpectedMachineState
 from PyQt5.QtWidgets import QApplication, QWidget, QTabWidget, QGridLayout, QLabel, QPlainTextEdit, QFrame, QScrollArea, \
     QCheckBox
@@ -26,6 +28,7 @@ class Worker(QObject):
     progress = pyqtSignal()
     interface = None
     state = None
+    run_to_address = None
 
     def run(self):
         try:
@@ -34,6 +37,8 @@ class Worker(QObject):
                 count += 1
                 self.interface.read_write_cycle()  # read instruction
                 if self.state.bus_from_device == [0, 0, 0, 0, 0, 0, 0, 0]:
+                    return
+                if self.run_to_address and self.interface.current_address == self.run_to_address:
                     return
                 self.interface.toggle_clock()  # click 1
                 self.progress.emit()
@@ -116,7 +121,7 @@ class TestTab(QWidget):
         rows = []
         for i, (m, rm) in enumerate(zip(self.interface.memory, self.interface.readable_memory)):
             rows.append(f'{i*2:<5} {m:<20}  {rm}')
-        self.mem = QPlainTextEdit('\n'.join(rows), readOnly=True)
+        self.mem = QPlainTextEdit('\n'.join(rows), readOnly=True, centerOnScroll=True)
         self.mem.setMinimumSize(QSize(600, 600))
         # scrollArea = QScrollArea()
         # scrollArea.setBackgroundRole(QPalette.Dark)
@@ -144,7 +149,16 @@ class TestTab(QWidget):
         row_custom.addWidget(self.translated_command)
         row_custom.addWidget(QLabel('Curr Address'))
         self.curr_address = QLineEdit('0', readOnly=True)
+        self.curr_address.setFixedWidth(60)
         row_custom.addWidget(self.curr_address)
+
+        self.run_to_btn = QPushButton('Run To:')
+        self.run_to_btn.clicked.connect(self.run_to_clicked)
+        row_custom.addWidget(self.run_to_btn)
+        self.run_to_addr = QLineEdit('', enabled=True)
+        self.run_to_addr.setFixedWidth(60)
+        row_custom.addWidget(self.run_to_addr)
+
         row_custom.addStretch()
         self.layout.addLayout(row_custom)
 
@@ -270,8 +284,15 @@ class TestTab(QWidget):
     def update_data(self):
         rows = []
         prior_blank = False
+        count = 0
+        active_row = 0
         for i, (m, rm) in enumerate(zip(self.interface.memory, self.interface.readable_memory)):
-            prefix = '>> ' if i == self.interface.current_address // 2 else ''
+            count += 1
+            if i == self.interface.current_address // 2:
+                active_row = count
+                prefix = '>> '
+            else:
+                prefix = ''
             rows = rows + self.interface.insert_rows.get(i*2, [])
             if len(self.interface.memory) > 128:
                 page = f'{i // 128: < 2}.'
@@ -285,7 +306,13 @@ class TestTab(QWidget):
                 prior_blank = False
                 rows.append(f'{prefix}{page}{(i % 128) * 2:<6} {m:<20}  {rm}')
         self.mem.setPlainText('\n'.join(rows))
-        self.curr_address.setText(str(self.interface.current_address))
+        self.mem.moveCursor(QTextCursor.Start)
+        for i in range(active_row):
+            self.mem.moveCursor(QTextCursor.Down)
+
+        pg = self.interface.current_address // 256
+        line = self.interface.current_address % 256
+        self.curr_address.setText(f'{pg}.{line}')
 
         # bus from device and clock
         self.bus_from_device.setText(txt(self.state.bus_from_device))
@@ -339,12 +366,11 @@ class TestTab(QWidget):
     def cancel_clicked(self):
         pass
 
-    def auto_clicked(self):
-        """ Run until HLT encountered
-        """
+    def run_many(self, run_to=None):
         self.thread = QThread()
         self.worker = Worker()
         self.worker.interface = self.interface
+        self.worker.run_to_address = run_to
         self.worker.state = self.state
         self.worker.moveToThread(self.thread)
         self.thread.started.connect(self.worker.run)
@@ -357,6 +383,17 @@ class TestTab(QWidget):
 
         self.disable()
         self.worker.finished.connect(self.reenable)
+
+    def auto_clicked(self):
+        """ Run until HLT encountered
+        """
+        self.run_many()
+
+    def run_to_clicked(self):
+        parts = self.run_to_addr.text().split('.')
+        page = int(parts[0]) if len(parts) == 2 else 0
+        line = int(parts[-1])
+        self.run_many(256*page + line)
 
     def cycle_clicked(self):
         try:
@@ -376,14 +413,14 @@ def run():
     # prog_name = 'subtract16bit.prog'
     # prog_name = 'find_largest.prog'
     # prog_name = 'find_largest16bit.prog'
-    prog_name = 'test.prog'
+    # prog_name = 'test.prog'
     # prog_name = 'turing_or.prog'
-    # prog_name = 'pages2.prog'
+    prog_name = 'pages2.prog'
     with open(f'./progs/{prog_name}') as f:
         program = f.readlines()
     expected_machine_state = ExpectedMachineState()
-    interface = MyComputerInterface(program, expected_machine_state, verbose=True, real_device=True)
-    # interface = MyComputerInterface(program, expected_machine_state, real_device=False)
+    # interface = MyComputerInterface(program, expected_machine_state, verbose=True, real_device=True)
+    interface = MyComputerInterface(program, expected_machine_state, real_device=False)
 
     app = QApplication(sys.argv)
     window = MainWindow(interface)

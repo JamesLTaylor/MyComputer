@@ -4,9 +4,9 @@
 *src_addr = 0    # this must be written to before a caller calls a different page
 *tgt_pg = 0      # stored in A on call
 *pg_stack_ptr = 0
-*pg_stack = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]  # location to return to. page and address
+*pg_stack = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]  # location to which control should return
 
-RDV P1 START
+RDV P1 START       # jump to normal setup
 :TURNPAGE
 CPY A P0           # call into external page
 RDV P1 CALL        # landing point for external call
@@ -14,9 +14,11 @@ RDV P1 CALL        # landing point for external call
 :START
 RDV A pg_stack
 RDV M1 pg_stack_ptr
+ADV A 0            # reset carry
 ADM A
 WRT R              # pg_stack_ptr now has address of head of stack
 RDV A MAIN
+RDV M0 MAIN
 RDV R MAINSTART
 RDV P1 TURNPAGE    # run main program
 
@@ -27,6 +29,7 @@ RDV M1 src_pg
 WRT R
 # in future put these on a stack to allow multiple calls
 RDV R 7            # address that all pages should start on
+CPY A M0
 RDV P1 TURNPAGE
 
 :RETURN
@@ -38,19 +41,26 @@ RDV P1 TURNPAGE
 
 ::MAIN
 #--------------------------------------------------------------------------------------
-*list1 = [25, 250, 2500]
-*list2 = [17, 27, 270]
+*list1 = [25, 250, 100]
+*list2 = [17, 27, 50]
 *pos = 6
 *results = [0, 0, 0]
+*temp = 0
 NOP
 :MAINTURNPAGE
 RDV P0 OS          # Jump from this page, will go back to OS page
 CPY R P1           # Land in this page, R contains the instruction to continue with
 
-:MAINSTART         # copy numbers into subtract
-RDV M0 MAIN
-RDV A list1.0
+:MAINSTART
 RDV M1 pos
+RDM A
+ADV A 0            # reset carry
+ADV A -2
+WRT R              # decrement pos
+
+RDV A list1.0      # copy numbers into subtract
+RDV M1 pos
+ADV A 0            # reset carry
 ADM A
 CPY R M1
 RDM A
@@ -61,6 +71,7 @@ WRT A
 RDV M0 MAIN
 RDV A list2.0
 RDV M1 pos
+ADV A 0            # reset carry
 ADM A
 CPY R M1
 RDM A
@@ -74,25 +85,30 @@ RDV M1 src_addr
 RDV A MAINRETURN
 WRT A
 RDV A SUBTRACT
-RDM R MAIN
+RDV R MAIN
 RDV P1 MAINTURNPAGE
 :MAINRETURN
-# write result
+# copy result from subtract to temp in this page
 RDV M0 SUBTRACT
 RDV M1 result
 RDM A
 RDV M0 MAIN
-RDV M1 results
-ADV M1 pos
-CPY R M1
+RDV M1 temp
 WRT A
+
+RDV A results
+RDV M1 pos
+ADV A 0            # reset carry
+ADM A              # R has address to write to
+RDV M1 temp
+RDM A
+CPY R M1
+WRT A              # finally write the answer
 
 # End of loop
 RDV M1 pos
 RDM A
-ADV A -2
-WRT R
-JMZ R FINISHED
+JMZ A FINISHED
 RDV P1 START
 :FINISHED
 HLT
@@ -100,8 +116,8 @@ HLT
 
 ::SUBTRACT  # a routine on its own page. You should write to a and b then read from result when it returns
 #--------------------------------------------------------------------------------------
-*a = 20000
-*b = 10000
+*a = 0
+*b = 0
 *neg_b = 0
 *result = 0
 NOP

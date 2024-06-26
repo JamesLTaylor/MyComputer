@@ -147,6 +147,18 @@ Line labels begin with `:`
 
 Page labels begin with `::`
 
+### Macros
+
+Macros simply expand inline to the instructions they are defined with.
+
+```
+DEFINE READ_A {
+RDV M1 head
+RDM A
+CPY A M1
+RDM A}
+```
+
 ## Test Programs
 
 * add16bit
