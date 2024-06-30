@@ -4,7 +4,7 @@
 *src_addr = 0    # this must be written to before a caller calls a different page
 *tgt_pg = 0      # stored in A on call
 *pg_stack_ptr = 0
-*pg_stack = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]  # location to which control should return
+*pg_stack = [0, 0]  # location to which control should return
 
 RDV P1 START       # jump to normal setup
 :TURNPAGE
